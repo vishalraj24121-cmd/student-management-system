@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Student Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- =====================================================================
+     STUDENT MANAGEMENT SYSTEM  (BCA 1st-year project)
+     File layout (all in this one file, easy to split later):
+       1. <style>   - all the CSS (colors are CSS variables at the top)
+       2. <body>    - login screen + empty app shell
+       3. <script>  - JavaScript, split into numbered sections:
+            1 Config & helpers        5 Students page
+            2 Sample data + DATA LAYER  6 Attendance page
+            3 UI toolkit (modal, toast) 7 Marks page
+            4 Dashboard page            8 Lost & Found, Reports, Settings, About
+            9 Click handlers + start-up
+     To connect Python/MySQL later: replace the functions in section 2
+     (the DATA LAYER) with fetch() calls to your Flask API.
+     ===================================================================== -->
+
+<style>
+/* ---------- 1. Colors, spacing and basic setup ---------- */
+:root{
+  --bg:#f2f5fb; --surface:#ffffff; --surface-2:#f7f9fd; --text:#0f1f3d; --muted:#5a6a85; --border:#e1e7f1;
+  --primary:#1d4ed8; --primary-hover:#1e40af; --primary-soft:#e8efff; --link:#1d4ed8;
+  --success:#0d8a5e; --success-soft:#e0f5ec; --danger:#c92a44; --danger-soft:#fdebee;
+  --warn:#a86a0a; --warn-soft:#fdf1d6; --info:#1b6fb8; --info-soft:#e3f1fb;
+  --danger-btn:#c92a44; --sidebar:#0f2a5c; --accent:#f5b83d;
+  --shadow:0 1px 2px rgba(15,31,61,.06),0 6px 20px rgba(15,31,61,.06);
+  --radius:14px;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a111f; --surface:#121b2e; --surface-2:#172238; --text:#e7edf9; --muted:#93a2bf; --border:#22314f;
+    --primary:#3b6df0; --primary-hover:#5a86f6; --primary-soft:#182a52; --link:#8fb0ff;
+    --success:#3ecf9a; --success-soft:#11332a; --danger:#ff7a90; --danger-soft:#3b1a23;
+    --warn:#f2bd5a; --warn-soft:#3a2f14; --info:#6cb6f0; --info-soft:#12304a; --sidebar:#0a1730;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0a111f; --surface:#121b2e; --surface-2:#172238; --text:#e7edf9; --muted:#93a2bf; --border:#22314f;
+  --primary:#3b6df0; --primary-hover:#5a86f6; --primary-soft:#182a52; --link:#8fb0ff;
+  --success:#3ecf9a; --success-soft:#11332a; --danger:#ff7a90; --danger-soft:#3b1a23;
+  --warn:#f2bd5a; --warn-soft:#3a2f14; --info:#6cb6f0; --info-soft:#12304a; --sidebar:#0a1730;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5}
+body.no-scroll{overflow:hidden}
+[hidden]{display:none!important}
+h1,h2,h3,h4{margin:0;line-height:1.25}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+.ic{flex:none}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.muted{color:var(--muted)}
+.mono{font-variant-numeric:tabular-nums;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- 2. Buttons, inputs, badges ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:10px;border:1px solid transparent;font-weight:700;font-size:14px;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap}
+.btn.primary{background:var(--primary);color:#fff}.btn.primary:hover{background:var(--primary-hover)}
+.btn.ghost{background:var(--surface);border-color:var(--border);color:var(--text)}.btn.ghost:hover{background:var(--surface-2)}
+.btn.danger{background:var(--danger-btn);color:#fff}.btn.danger:hover{filter:brightness(.92)}
+.btn.success{background:var(--success);color:#fff}
+:root[data-theme="dark"] .btn.success{color:#06231a}
+.btn.sm{padding:6px 12px;font-size:13px}
+.btn.block{width:100%;padding:12px}
+.btn:disabled{opacity:.65;cursor:not-allowed}
+.icon-btn{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer}
+.icon-btn:hover{background:var(--primary-soft);color:var(--primary)}
+.icon-btn.del:hover{background:var(--danger-soft);color:var(--danger)}
+.input,.select,.textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);transition:border-color .15s,box-shadow .15s}
+.input:focus,.select:focus,.textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.input[readonly]{background:var(--surface-2);color:var(--muted)}
+.textarea{min-height:80px;resize:vertical}
+.invalid{border-color:var(--danger)!important}
+.field label{display:block;font-weight:700;font-size:13px;margin-bottom:6px}
+.field .err{color:var(--danger);font-size:12.5px;margin-top:4px;min-height:0}
+.field .hint{color:var(--muted);font-size:12.5px;margin-top:4px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.badge.success{background:var(--success-soft);color:var(--success)}
+.badge.danger{background:var(--danger-soft);color:var(--danger)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.info{background:var(--info-soft);color:var(--info)}
+.badge.neutral{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- 3. Login screen ---------- */
+#loginScreen{display:grid;grid-template-columns:1.05fr 1fr;min-height:100%}
+.login-brand{background:radial-gradient(900px 500px at 10% 0%,#2a5bd7 0%,transparent 60%),radial-gradient(700px 500px at 100% 100%,#183b8c 0%,transparent 55%),#0f2a5c;color:#fff;padding:48px 56px;display:flex;flex-direction:column;justify-content:space-between}
+.logo-row{display:flex;align-items:center;gap:12px;font-weight:800}
+.logo-mark{width:44px;height:44px;border-radius:12px;background:var(--accent);color:#0f2a5c;display:grid;place-items:center;flex:none}
+.login-brand h1{font-size:38px;font-weight:800;letter-spacing:-.02em;max-width:14ch}
+.login-brand .lead{margin-top:14px;color:#c7d5f5;max-width:44ch;font-size:16px}
+.module-list{display:grid;gap:12px;margin-top:32px;padding:0;list-style:none}
+.module-list li{display:flex;gap:12px;align-items:center;color:#e4ecff;font-weight:600}
+.module-list .dot{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.12);display:grid;place-items:center}
+.login-foot{color:#9db3e6;font-size:13px}
+.login-side{display:grid;place-items:center;padding:32px 20px;background:var(--bg)}
+.login-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:34px;box-shadow:var(--shadow)}
+.login-card h2{font-size:24px;font-weight:800}
+.login-card .sub{color:var(--muted);margin:6px 0 22px}
+.login-card .field{margin-bottom:16px}
+.pw-wrap{position:relative}
+.pw-wrap .toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%)}
+.row-between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.check{display:inline-flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.check input{width:17px;height:17px;accent-color:var(--primary)}
+.link{background:none;border:0;padding:0;color:var(--link);font-weight:700;cursor:pointer}
+.link:hover{text-decoration:underline}
+.alert{padding:10px 14px;border-radius:10px;font-size:14px;margin-bottom:16px}
+.alert.error{background:var(--danger-soft);color:var(--danger)}
+.demo-box{margin-top:20px;padding:12px 14px;border-radius:12px;background:var(--primary-soft);font-size:13.5px}
+.demo-box code{font-weight:700}
+
+/* ---------- 4. App layout: sidebar + topbar ---------- */
+.app{display:flex;min-height:100%}
+.sidebar{position:fixed;top:0;bottom:0;left:0;width:264px;background:var(--sidebar);color:#cfd9f0;display:flex;flex-direction:column;padding:calc(18px + env(safe-area-inset-top,0px)) 14px calc(14px + env(safe-area-inset-bottom,0px));z-index:60;transition:transform .25s}
+.sidebar .brand{display:flex;align-items:center;gap:12px;padding:4px 8px 20px;color:#fff}
+.brand-name{font-weight:800;line-height:1.2;font-size:15px}
+.brand-sub{font-size:12px;color:#9db3e6}
+.nav{display:grid;gap:4px;flex:1;align-content:start;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;background:none;color:inherit;border-radius:10px;font-weight:600;cursor:pointer;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:#2f5bd8;color:#fff}
+.side-user{display:flex;align-items:center;gap:10px;padding:12px 8px 8px;border-top:1px solid rgba(255,255,255,.12);margin-top:10px}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.side-user .avatar{background:var(--accent);color:#0f2a5c}
+.side-user .who{min-width:0;flex:1}
+.side-user .who b{display:block;color:#fff;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-user .who span{font-size:12px;color:#9db3e6}
+.side-user .icon-btn{color:#cfd9f0}.side-user .icon-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.main{margin-left:264px;flex:1;min-width:0}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:12px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar h1{font-size:18px;font-weight:800;flex:1}
+.topbar .date{color:var(--muted);font-size:13.5px}
+.menu-btn{display:none}
+.backdrop-side{display:none}
+.content{padding:24px;max-width:1320px;margin:0 auto}
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.page-head h2{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.page-head p{color:var(--muted);margin-top:4px}
+.head-actions{display:flex;gap:10px;flex-wrap:wrap}
+
+/* ---------- 5. Cards, grids, stats ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--border)}
+.card-head h3{font-size:16px;font-weight:800}
+.card-body{padding:20px}
+.grid{display:grid;gap:16px}
+.stats{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:20px}
+.two-col{grid-template-columns:1.6fr 1fr;margin-bottom:20px}
+.two-col .card{margin-bottom:0}
+.equal-2{grid-template-columns:1fr 1fr;margin-bottom:20px}
+.equal-2 .card{margin-bottom:0}
+.stat{display:flex;gap:14px;align-items:center;padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.stat-icon{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;flex:none}
+.stat-icon.blue{background:var(--primary-soft);color:var(--primary)}
+.stat-icon.green{background:var(--success-soft);color:var(--success)}
+.stat-icon.amber{background:var(--warn-soft);color:var(--warn)}
+.stat-icon.sky{background:var(--info-soft);color:var(--info)}
+.stat-label{color:var(--muted);font-size:13.5px;font-weight:600}
+.stat-value{font-size:28px;font-weight:800;line-height:1.15}
+.stat-sub{color:var(--muted);font-size:12.5px}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quick .btn{justify-content:flex-start;padding:14px}
+.bars{display:flex;align-items:flex-end;gap:12px;height:190px;padding:8px 4px 0}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;font-size:12.5px;color:var(--muted)}
+.bar{width:100%;max-width:44px;background:var(--primary);border-radius:8px 8px 0 0;min-height:4px}
+.bar-col b{color:var(--text);font-size:12.5px}
+
+/* ---------- 6. Tables ---------- */
+.toolbar,.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+.filters .field{flex:1;min-width:150px}
+.toolbar .search,.search{position:relative;flex:1;min-width:220px}
+.search .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search .input{padding-left:38px}
+.toolbar .select{width:auto;min-width:140px}
+.table-wrap{overflow-x:auto}
+.table{width:100%;border-collapse:collapse;font-size:14px}
+.table th{text-align:left;padding:12px 16px;font-size:13px;font-weight:700;color:var(--muted);background:var(--surface-2);border-bottom:1px solid var(--border);white-space:nowrap}
+.table td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+.table tbody tr:hover{background:var(--surface-2)}
+.table tbody tr:last-child td{border-bottom:0}
+.table .actions{white-space:nowrap;text-align:right}
+.person{display:flex;align-items:center;gap:12px}
+.person b{display:block;font-weight:700}
+.person span{font-size:12.5px;color:var(--muted)}
+.table-foot{padding:12px 20px;color:var(--muted);font-size:13px;border-top:1px solid var(--border)}
+.progress{height:8px;background:var(--border);border-radius:99px;overflow:hidden;min-width:90px}
+.progress>span{display:block;height:100%;border-radius:99px;background:var(--success)}
+.progress.warn>span{background:#e0a020}.progress.danger>span{background:var(--danger)}
+.pct-cell{display:flex;align-items:center;gap:10px;min-width:150px}
+.pct-cell b{width:42px;font-variant-numeric:tabular-nums}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 14px;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--border)}
+.seg button.on.present{background:var(--success);color:#fff}
+.seg button.on.absent{background:var(--danger-btn);color:#fff}
+:root[data-theme="dark"] .seg button.on.present{color:#06231a}
+
+/* ---------- 7. Empty state, skeleton ---------- */
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty .ic-wrap{width:64px;height:64px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;margin:0 auto 14px}
+.empty h3{color:var(--text);font-size:17px;margin-bottom:6px}
+.empty .btn{margin-top:16px}
+.skeleton{background:linear-gradient(90deg,var(--border) 25%,var(--surface-2) 50%,var(--border) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:12px}
+@keyframes shimmer{to{background-position:-200% 0}}
+.skel-head{height:44px;width:40%;margin-bottom:20px}
+.skel-card{height:88px}
+.skel-table{height:320px;margin-top:20px}
+
+/* ---------- 8. Modal, confirm, toast ---------- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(8,16,36,.55);display:grid;place-items:center;padding:16px;z-index:100;animation:fade .15s}
+#confirmRoot .modal-backdrop{z-index:120}
+@keyframes fade{from{opacity:0}}
+.modal{background:var(--surface);border-radius:16px;width:100%;max-width:560px;max-height:calc(100% - 16px);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);animation:pop .18s}
+@keyframes pop{from{transform:translateY(10px);opacity:0}}
+.modal.lg{max-width:760px}.modal.sm{max-width:400px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:17px;font-weight:800}
+.modal-body{padding:20px;overflow-y:auto}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--border)}
+.confirm{text-align:center}
+.confirm h3{margin:12px 0 6px}.confirm p{color:var(--muted)}
+.confirm-icon{width:56px;height:56px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;margin:0 auto}
+.confirm-icon.danger{background:var(--danger-soft);color:var(--danger)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .full{grid-column:1/-1}
+#toastRoot{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:200;display:grid;gap:10px}
+.toast{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-left:4px solid var(--success);box-shadow:0 10px 30px rgba(0,0,0,.2);min-width:240px;max-width:340px;animation:pop .2s;font-weight:600;font-size:14px}
+.toast.error{border-left-color:var(--danger)}.toast.error .ic{color:var(--danger)}
+.toast.info{border-left-color:var(--info)}.toast.info .ic{color:var(--info)}
+.toast .ic{color:var(--success)}
+.toast.out{opacity:0;transform:translateX(20px);transition:.3s}
+
+/* ---------- 9. Detail views: student profile, result card, lost & found ---------- */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.detail-grid dt{color:var(--muted);font-size:12.5px;font-weight:600}
+.detail-grid dd{margin:2px 0 0;font-weight:700}
+.detail-grid .full{grid-column:1/-1}
+.profile-top{display:flex;gap:16px;align-items:center;margin-bottom:20px}
+.profile-top .avatar{width:64px;height:64px;font-size:22px}
+.result-card{border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);overflow:hidden;box-shadow:var(--shadow);margin-bottom:20px}
+.result-head{background:var(--sidebar);color:#fff;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border-bottom:4px solid var(--accent)}
+.result-head h3{font-size:18px}.result-head p{color:#b9c9ee;font-size:13.5px}
+.result-body{padding:20px 24px}
+.result-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px}
+.result-info dt{color:var(--muted);font-size:12.5px;font-weight:600}.result-info dd{margin:2px 0 0;font-weight:700}
+.result-sum{display:flex;gap:14px;flex-wrap:wrap;margin-top:18px}
+.sum-box{flex:1;min-width:130px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.sum-box span{display:block;color:var(--muted);font-size:12.5px;font-weight:600}
+.sum-box b{font-size:20px}
+.sum-box.pass{background:var(--success-soft);border-color:transparent}.sum-box.pass b{color:var(--success)}
+.sum-box.fail{background:var(--danger-soft);border-color:transparent}.sum-box.fail b{color:var(--danger)}
+.lf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;padding:20px}
+.lf-card{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+.lf-img{height:150px;background:var(--surface-2);display:grid;place-items:center;color:var(--muted);position:relative}
+.lf-img img{width:100%;height:100%;object-fit:cover}
+.lf-img .badge{position:absolute;top:10px;left:10px}
+.lf-body{padding:14px 16px;flex:1;display:grid;gap:6px;align-content:start}
+.lf-body h4{font-size:16px}
+.lf-body .desc{color:var(--muted);font-size:13.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lf-meta{font-size:13px;color:var(--muted);display:grid;gap:2px;margin-top:4px}
+.lf-actions{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);flex-wrap:wrap}
+.img-preview{margin-top:8px;display:flex;gap:10px;align-items:center}
+.img-preview img{width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+.report-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.report-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;display:grid;gap:12px;align-content:start}
+.report-card h3{font-size:17px}
+.report-card .nums{display:flex;gap:18px;flex-wrap:wrap}
+.report-card .nums b{display:block;font-size:22px}.report-card .nums span{color:var(--muted);font-size:12.5px}
+.report-actions{display:flex;gap:8px;flex-wrap:wrap}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.chip{background:var(--primary-soft);border-radius:10px;padding:8px 14px;font-size:13px}
+.chip b{display:block;font-size:17px}
+.report-head{text-align:center;padding-bottom:10px;border-bottom:2px solid var(--border);margin-bottom:6px}
+.report-head p{color:var(--muted);font-size:13px}
+.prose h3{margin:22px 0 8px;font-size:17px}
+.prose ul{margin:8px 0;padding-left:20px}.prose li{margin:4px 0}
+.tag-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.tech-tag{padding:6px 12px;border-radius:9px;background:var(--primary-soft);color:var(--primary);font-weight:700;font-size:13px}
+:root[data-theme="dark"] .tech-tag{color:var(--link)}
+.about-hero{background:var(--sidebar);color:#fff;border-radius:var(--radius);padding:28px;margin-bottom:20px;border-bottom:4px solid var(--accent)}
+.about-hero h2{font-size:26px;margin-bottom:8px}.about-hero p{color:#c7d5f5;max-width:70ch}
+.setting-row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:0}
+.setting-row .txt b{display:block}.setting-row .txt span{color:var(--muted);font-size:13.5px}
+.setting-row .input,.setting-row .select{width:260px;max-width:100%}
+
+/* ---------- 10. Responsive ---------- */
+@media (max-width:1000px){
+  .two-col,.equal-2{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+  #loginScreen{grid-template-columns:1fr}
+  .login-brand{display:none}
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.4)}
+  .backdrop-side.show{display:block;position:fixed;inset:0;background:rgba(8,16,36,.5);z-index:55}
+  .main{margin-left:0}
+  .menu-btn{display:inline-grid}
+  .topbar{padding:10px 16px}.topbar .date{display:none}
+  .content{padding:16px}
+}
+@media (max-width:640px){
+  .form-grid,.detail-grid{grid-template-columns:1fr}
+  .toolbar .select,.toolbar .btn{flex:1}
+  .page-head .btn,.head-actions{width:100%}
+  .head-actions .btn{flex:1}
+  #toastRoot{left:16px}
+  .toast{max-width:none}
+  .stat-value{font-size:24px}
+}
+
+/* ---------- 11. Printing (used by Reports and Result Card) ---------- */
+#printArea{display:none}
+@media print{
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;padding:0;color:#111;background:#fff;
+    --text:#111;--muted:#444;--border:#bbb;--surface:#fff;--surface-2:#f2f2f2;--primary:#1d4ed8;--primary-soft:#e8efff;
+    --success:#0d6b49;--success-soft:#e0f5ec;--danger:#a4162c;--danger-soft:#fdebee;--warn:#8a5500;--warn-soft:#fdf1d6;--info:#1b6fb8;--info-soft:#e3f1fb;--shadow:none}
+  #printArea .no-print{display:none!important}
+  #printArea .result-head{background:#0f2a5c!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printArea .badge,#printArea .progress>span,#printArea .chip,#printArea .sum-box{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+
+<body>
+
+<!-- ====================== LOGIN SCREEN ====================== -->
+<div id="loginScreen">
+  <section class="login-brand" aria-hidden="true">
+    <div class="logo-row">
+      <div class="logo-mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+      <div><div class="brand-name js-college">Sunrise College of Computer Applications</div><div class="brand-sub" style="color:#9db3e6">Department of BCA</div></div>
+    </div>
+    <div>
+      <h1>One place for every student record.</h1>
+      <p class="lead">Replace registers and scattered files with a single portal for admissions data, daily attendance, marks and campus lost-and-found.</p>
+      <ul class="module-list">
+        <li><span class="dot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span>Student records</li>
+        <li><span class="dot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>Attendance</li>
+        <li><span class="dot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></span>Marks and results</li>
+        <li><span class="dot"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>Lost and found</li>
+      </ul>
+    </div>
+    <div class="login-foot">BCA 1st-year project · HTML, CSS, JavaScript, Python, MySQL</div>
+  </section>
+
+  <section class="login-side">
+    <div class="login-card">
+      <h2>Sign in</h2>
+      <p class="sub">Use your staff account to open the portal.</p>
+      <div id="loginError" class="alert error" role="alert" hidden>Email or password is incorrect. Check the details and try again.</div>
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="loginEmail">Username / Email</label>
+          <input id="loginEmail" class="input" type="email" autocomplete="username" placeholder="you@college.edu">
+          <div class="err" id="errEmail"></div>
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <div class="pw-wrap">
+            <input id="loginPassword" class="input" type="password" autocomplete="current-password" placeholder="Enter your password">
+            <button type="button" class="icon-btn toggle" data-action="toggle-pass" aria-label="Show or hide password"></button>
+          </div>
+          <div class="err" id="errPassword"></div>
+        </div>
+        <div class="row-between">
+          <label class="check"><input type="checkbox" id="rememberMe"> Remember me</label>
+          <button type="button" class="link" data-action="forgot">Forgot password?</button>
+        </div>
+        <button id="loginBtn" class="btn primary block" type="submit">Login</button>
+      </form>
+      <div class="demo-box">
+        Demo account: <code>admin@college.edu</code> / <code>admin123</code>
+        <div style="margin-top:6px"><button type="button" class="link" data-action="demo-login">Fill demo details</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ====================== APP SHELL (filled by JavaScript) ====================== -->
+<div id="app" class="app" hidden>
+  <aside id="sidebar" class="sidebar" aria-label="Main navigation"></aside>
+  <div id="sideBackdrop" class="backdrop-side" data-action="close-sidebar"></div>
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" data-action="toggle-sidebar" aria-label="Open menu" id="menuBtn"></button>
+      <h1 id="pageTitle">Dashboard</h1>
+      <span class="date" id="todayLabel"></span>
+      <div class="avatar" id="topAvatar" title="Signed in user">AD</div>
+    </header>
+    <main id="content" class="content"></main>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+<div id="confirmRoot"></div>
+<div id="toastRoot" aria-live="polite"></div>
+<div id="printArea"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   1. CONFIG & SMALL HELPER FUNCTIONS
+   ===================================================================== */
+const COURSES   = ['BCA', 'BBA', 'B.Sc IT'];
+const SECTIONS  = ['A', 'B', 'C'];
+const SEMESTERS = [1, 2, 3, 4, 5, 6];
+const GENDERS   = ['Male', 'Female', 'Other'];
+const SUBJECTS  = ['Programming in C', 'Computer Fundamentals', 'Mathematics', 'Database Management', 'Web Technologies', 'English Communication'];
+const CATEGORIES = ['Electronics', 'Books & Notes', 'ID Card', 'Bag', 'Clothing', 'Accessories', 'Keys', 'Other'];
+const COURSE_CODE = { 'BCA': 'BCA', 'BBA': 'BBA', 'B.Sc IT': 'BSC' };
+const MAX_INTERNAL = 30, MAX_EXTERNAL = 70, PASS_TOTAL = 40;
+const DEMO_USER = { email: 'admin@college.edu', password: 'admin123', name: 'Dr. Anita Sharma', role: 'Administrator' };
+const STORE_KEY = 'sms_demo_db_v1', SETTINGS_KEY = 'sms_settings_v1', REMEMBER_KEY = 'sms_remember_email', THEME_KEY = 'sms_theme';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PHONE_RE = /^[6-9]\d{9}$/;
+
+const $  = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayISO = () => iso(new Date());
+const daysAgoISO = n => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+const parseISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const fmtDate = s => s ? parseISO(s).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const initials = n => n.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+const nextNum = arr => arr.reduce((a, x) => Math.max(a, x.id), 0) + 1;
+const seeded = seed => { let s = seed; return () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296; };
+
+/* Small icon set (feather-style). Use icon('name') anywhere in HTML strings. */
+const ICONS = {
+  grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  award: '<circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>',
+  package: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  settings: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  menu: '<line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>',
+  printer: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+  alert: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  cap: '<path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+  flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>'
+};
+const icon = (name, size = 18) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
+
+/* =====================================================================
+   2. SAMPLE DATA + DATA LAYER
+   The "db" object mirrors the MySQL tables:
+     db.students   -> students table     (primary key: id = student_id)
+     db.attendance -> attendance table    (studentId points to students.id)
+     db.marks      -> marks table         (studentId points to students.id)
+     db.lostFound  -> lost_found table
+   Everything is saved in the browser (localStorage) so changes survive a refresh.
+   LATER: replace loadDB / saveDB with fetch('/api/...') calls to your Flask backend.
+   ===================================================================== */
+function buildSampleData() {
+  const rand = seeded(2026);
+  const rows = [
+    // id, name, gender, course, sem, section, phone, dob, admission, address, status
+    ['BCA2026001', 'Aarav Sharma',   'Male',   'BCA', 1, 'A', '9810012345', '2008-03-14', '2026-07-15', 'Sector 7, Rohini, Delhi', 'Active'],
+    ['BCA2026002', 'Ananya Verma',   'Female', 'BCA', 1, 'A', '9899023456', '2007-11-02', '2026-07-15', 'Dwarka Sector 12, New Delhi', 'Active'],
+    ['BCA2026003', 'Rohan Gupta',    'Male',   'BCA', 1, 'B', '9711034567', '2008-01-25', '2026-07-16', 'Laxmi Nagar, Delhi', 'Active'],
+    ['BCA2026004', 'Priya Singh',    'Female', 'BCA', 1, 'B', '9873045678', '2007-08-19', '2026-07-16', 'Sector 62, Noida', 'Active'],
+    ['BCA2026005', 'Kabir Mehta',    'Male',   'BCA', 1, 'A', '9650056789', '2008-05-30', '2026-07-18', 'Indirapuram, Ghaziabad', 'Active'],
+    ['BCA2026006', 'Ishita Joshi',   'Female', 'BCA', 1, 'B', '9958067890', '2007-12-09', '2026-07-20', 'Vasant Kunj, New Delhi', 'Active'],
+    ['BCA2025001', 'Vikram Yadav',   'Male',   'BCA', 3, 'A', '9818078901', '2006-04-12', '2025-07-14', 'Janakpuri, New Delhi', 'Active'],
+    ['BCA2025002', 'Sneha Kulkarni', 'Female', 'BCA', 3, 'A', '9910089012', '2006-09-27', '2025-07-14', 'Pitampura, Delhi', 'Active'],
+    ['BCA2025003', 'Arjun Nair',     'Male',   'BCA', 3, 'B', '9582090123', '2006-02-08', '2025-07-15', 'Mayur Vihar Phase 1, Delhi', 'Active'],
+    ['BBA2026001', 'Neha Agarwal',   'Female', 'BBA', 1, 'A', '9891101234', '2007-10-21', '2026-07-17', 'Sector 15, Gurugram', 'Active'],
+    ['BBA2026002', 'Rahul Chauhan',  'Male',   'BBA', 1, 'A', '9013112345', '2008-06-06', '2026-07-17', 'Karol Bagh, New Delhi', 'Active'],
+    ['BBA2025001', 'Simran Kaur',    'Female', 'BBA', 3, 'A', '9711123456', '2006-07-15', '2025-07-16', 'Rajouri Garden, New Delhi', 'Active'],
+    ['BSC2026001', 'Aditya Mishra',  'Male',   'B.Sc IT', 1, 'A', '9868134567', '2007-09-03', '2026-07-19', 'Preet Vihar, Delhi', 'Active'],
+    ['BSC2026002', 'Pooja Reddy',    'Female', 'B.Sc IT', 1, 'A', '9990145678', '2008-02-17', '2026-07-19', 'Sector 21, Faridabad', 'Active'],
+    ['BCA2024001', 'Manish Tiwari',  'Male',   'BCA', 5, 'A', '9312156789', '2004-12-01', '2024-07-12', 'Shahdara, Delhi', 'Inactive'],
+    ['BCA2024002', 'Kavya Iyer',     'Female', 'BCA', 5, 'A', '9540167890', '2004-05-23', '2024-07-12', 'Saket, New Delhi', 'Active']
+  ];
+  const students = rows.map(r => ({
+    id: r[0], name: r[1], gender: r[2], course: r[3], semester: r[4], section: r[5], phone: r[6], dob: r[7],
+    admissionDate: r[8], address: r[9], status: r[10],
+    email: r[1].toLowerCase().replace(/\s+/g, '.') + '@student.college.edu'
+  }));
+
+  // Attendance: last 10 weekdays for every student
+  const days = [];
+  for (let i = 0; days.length < 10; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    if (d.getDay() !== 0 && d.getDay() !== 6) days.push(iso(d));
+  }
+  const attendance = [];
+  students.forEach(s => {
+    const p = 0.6 + rand() * 0.38;
+    days.forEach(date => attendance.push({ studentId: s.id, date, status: rand() < p ? 'Present' : 'Absent' }));
+  });
+
+  // Marks: 5 subjects per student (a few low scores so "Fail" shows up)
+  const marks = []; let mid = 1;
+  students.forEach((s, i) => {
+    for (let k = 0; k < 5; k++) {
+      let internal = 14 + Math.floor(rand() * 16), external = 32 + Math.floor(rand() * 38);
+      if ((i * 5 + k) % 13 === 0) { internal = 8 + Math.floor(rand() * 8); external = 15 + Math.floor(rand() * 10); }
+      marks.push({ id: mid++, studentId: s.id, subject: SUBJECTS[(i + k) % SUBJECTS.length], internal, external });
+    }
+  });
+
+  const lostFound = [
+    { id: 1, name: 'Black laptop charger (65W)', category: 'Electronics', description: 'Black adapter with a white name tag stuck on it.', location: 'Computer Lab 2', date: daysAgoISO(2), reportedBy: 'Rohan Gupta', contact: '9711034567', status: 'Lost', image: '' },
+    { id: 2, name: 'Blue steel water bottle', category: 'Accessories', description: 'Blue bottle with a small dent near the base and a green cap.', location: 'Library reading hall', date: daysAgoISO(1), reportedBy: 'Library staff', contact: 'library@college.edu', status: 'Found', image: '' },
+    { id: 3, name: 'Student ID card', category: 'ID Card', description: 'ID card of Ananya Verma, BCA Semester 1.', location: 'Canteen', date: daysAgoISO(3), reportedBy: 'Canteen manager', contact: '9899000111', status: 'Found', image: '' },
+    { id: 4, name: 'Data Structures textbook', category: 'Books & Notes', description: 'Blue cover, has handwritten notes on the first pages.', location: 'Classroom 204', date: daysAgoISO(4), reportedBy: 'Vikram Yadav', contact: '9818078901', status: 'Lost', image: '' },
+    { id: 5, name: 'Silver wrist watch', category: 'Accessories', description: 'Analog watch with a brown leather strap.', location: 'Seminar hall', date: daysAgoISO(9), reportedBy: 'Security desk', contact: '9810099999', status: 'Claimed', image: '' },
+    { id: 6, name: 'Black backpack', category: 'Bag', description: 'Black backpack with green zip pullers, contains a notebook and a pen box.', location: 'Bus stop near Gate 2', date: daysAgoISO(1), reportedBy: 'Priya Singh', contact: '9873045678', status: 'Lost', image: '' },
+    { id: 7, name: 'Wired earphones', category: 'Electronics', description: 'White wired earphones with a case.', location: 'Corridor near Room 105', date: daysAgoISO(5), reportedBy: 'Peon Ramesh', contact: '9810077777', status: 'Found', image: '' },
+    { id: 8, name: 'Room key with red keychain', category: 'Keys', description: 'Single brass key with a red rubber keychain.', location: 'Parking area', date: daysAgoISO(12), reportedBy: 'Security desk', contact: '9810099999', status: 'Claimed', image: '' }
+  ];
+  return { students, attendance, marks, lostFound };
+}
+function loadDB() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) { const d = JSON.parse(raw); if (d && d.students) return d; } } catch (e) { /* storage blocked: use sample data */ }
+  return buildSampleData();
+}
+function saveDB() { try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch (e) { /* storage full or blocked: data stays in memory */ } }
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)); if (s && s.college) return s; } catch (e) {} return { college: 'Sunrise College of Computer Applications' }; }
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+
+let db = loadDB();
+let settings = loadSettings();
+let currentUser = null;
+
+/* Calculation helpers */
+const gradeOf = t => t >= 90 ? 'O' : t >= 80 ? 'A+' : t >= 70 ? 'A' : t >= 60 ? 'B+' : t >= 50 ? 'B' : t >= PASS_TOTAL ? 'C' : 'F';
+const gradeClass = g => ['O', 'A+', 'A'].includes(g) ? 'success' : g === 'F' ? 'danger' : 'info';
+function attPct(sid) {
+  const r = db.attendance.filter(a => a.studentId === sid);
+  return r.length ? Math.round(r.filter(a => a.status === 'Present').length / r.length * 100) : null;
+}
+const pctClass = p => p === null ? '' : p >= 75 ? '' : p >= 65 ? 'warn' : 'danger';
+const pctBadge = p => p === null ? '<span class="badge neutral">No data</span>' : p >= 75 ? '<span class="badge success">Good</span>' : p >= 65 ? '<span class="badge warn">Warning</span>' : '<span class="badge danger">Shortage</span>';
+function summarize(sid) {
+  const ms = db.marks.filter(m => m.studentId === sid);
+  const total = ms.reduce((a, m) => a + m.internal + m.external, 0);
+  const max = ms.length * 100;
+  return { ms, total, max, pct: max ? total / max * 100 : 0, pass: ms.length > 0 && ms.every(m => m.internal + m.external >= PASS_TOTAL), count: ms.length };
+}
+function nextStudentId(course) {
+  const prefix = COURSE_CODE[course] + new Date().getFullYear();
+  const used = db.students.filter(s => s.id.startsWith(prefix)).map(s => parseInt(s.id.slice(prefix.length), 10) || 0);
+  return prefix + String((used.length ? Math.max(...used) : 0) + 1).padStart(3, '0');
+}
+const studentById = id => db.students.find(s => s.id === id);
+
+/* =====================================================================
+   3. UI TOOLKIT: modal, confirm dialog, toast, forms, printing, CSV
+   ===================================================================== */
+function openModal({ title, body, footer = '', size = '' }) {
+  $('#modalRoot').innerHTML = `<div class="modal-backdrop"><div class="modal ${size}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="modal-head"><h3>${esc(title)}</h3><button class="icon-btn" data-action="close-modal" aria-label="Close">${icon('x')}</button></div>
+    <div class="modal-body">${body}</div>${footer ? `<div class="modal-foot">${footer}</div>` : ''}</div></div>`;
+  document.body.classList.add('no-scroll');
+}
+function closeModal() { $('#modalRoot').innerHTML = ''; document.body.classList.remove('no-scroll'); }
+
+function confirmDialog({ title, message, confirmText = 'Confirm', danger = false }) {
+  return new Promise(resolve => {
+    const root = $('#confirmRoot');
+    root.innerHTML = `<div class="modal-backdrop"><div class="modal sm" role="alertdialog" aria-modal="true">
+      <div class="modal-body confirm"><div class="confirm-icon ${danger ? 'danger' : ''}">${icon(danger ? 'alert' : 'info', 26)}</div>
+      <h3>${esc(title)}</h3><p>${esc(message)}</p></div>
+      <div class="modal-foot"><button class="btn ghost" id="cfNo">Cancel</button><button class="btn ${danger ? 'danger' : 'primary'}" id="cfYes">${esc(confirmText)}</button></div></div></div>`;
+    const done = v => { root.innerHTML = ''; resolve(v); };
+    $('#cfNo').onclick = () => done(false);
+    $('#cfYes').onclick = () => done(true);
+    $('#cfYes').focus();
+  });
+}
+
+function toast(message, type = 'success') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `${icon(type === 'error' ? 'alert' : type === 'info' ? 'info' : 'check')}<span>${esc(message)}</span>`;
+  $('#toastRoot').appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 3200);
+}
+
+/* Form helpers: build fields, read values, show validation messages */
+const field = (label, name, control, cls = '', hint = '') => `<div class="field ${cls}"><label for="f_${name}">${label}</label>${control}${hint ? `<div class="hint">${hint}</div>` : ''}<div class="err" data-err="${name}"></div></div>`;
+const inputHTML = (name, type, val, attrs = '') => `<input id="f_${name}" name="${name}" type="${type}" class="input" value="${esc(val)}" ${attrs}>`;
+function optionList(list, selected, allLabel) {
+  return (allLabel !== undefined ? `<option value="">${esc(allLabel)}</option>` : '') + list.map(o => {
+    const v = typeof o === 'object' ? o.value : o, l = typeof o === 'object' ? o.label : o;
+    return `<option value="${esc(v)}" ${String(v) === String(selected) ? 'selected' : ''}>${esc(l)}</option>`;
+  }).join('');
+}
+const selectHTML = (name, list, selected, placeholder, attrs = '') => `<select id="f_${name}" name="${name}" class="select" ${attrs}>${optionList(list, selected, placeholder)}</select>`;
+const formData = f => Object.fromEntries([...new FormData(f)].map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
+function showErrors(form, errs) {
+  $$('[data-err]', form).forEach(e => e.textContent = '');
+  $$('.invalid', form).forEach(e => e.classList.remove('invalid'));
+  const keys = Object.keys(errs);
+  keys.forEach(k => {
+    const e = $(`[data-err="${k}"]`, form); if (e) e.textContent = errs[k];
+    const input = form.elements[k]; if (input && input.classList) input.classList.add('invalid');
+  });
+  if (keys.length) { const first = form.elements[keys[0]]; if (first && first.focus) first.focus(); }
+  return keys.length > 0;
+}
+
+function emptyState(iconName, title, text, btnHtml = '') {
+  return `<div class="empty"><div class="ic-wrap">${icon(iconName, 28)}</div><h3>${esc(title)}</h3><p>${esc(text)}</p>${btnHtml}</div>`;
+}
+const skeleton = () => `<div class="skeleton skel-head"></div><div class="grid stats">${'<div class="skeleton skel-card"></div>'.repeat(4)}</div><div class="skeleton skel-table"></div>`;
+
+function printHTML(html) {
+  $('#printArea').innerHTML = html;
+  try { window.print(); } catch (e) { toast('Printing is not available in this view. Open the file in your browser to print.', 'error'); }
+  setTimeout(() => { $('#printArea').innerHTML = ''; }, 400);
+}
+function downloadCSV(filename, report) {
+  const q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const csv = '\uFEFF' + [report.columns, ...report.rows].map(r => r.map(q).join(',')).join('\r\n');
+  try {
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Report downloaded as ' + filename);
+  } catch (e) { toast('Download is not available in this view. Open the file in your browser to download.', 'error'); }
+}
+
+/* =====================================================================
+   4. NAVIGATION + PAGE REGISTRY + DASHBOARD
+   Each page has: title, html() to build the markup, init() to attach events,
+   update() to redraw only the changing part (so search boxes keep focus).
+   ===================================================================== */
+const NAV = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
+  { id: 'students', label: 'Students', icon: 'users' },
+  { id: 'attendance', label: 'Attendance', icon: 'calendar' },
+  { id: 'marks', label: 'Marks & Results', icon: 'award' },
+  { id: 'lostfound', label: 'Lost & Found', icon: 'package' },
+  { id: 'reports', label: 'Reports', icon: 'file' },
+  { id: 'settings', label: 'Settings', icon: 'settings' },
+  { id: 'about', label: 'About Project', icon: 'info' }
+];
+const ui = {
+  page: 'dashboard',
+  students: { q: '', course: '', sem: '', status: '', sort: 'name-asc' },
+  att: { course: 'BCA', sem: '1', section: 'A', date: todayISO(), q: '', draft: {} },
+  marks: { studentId: '', q: '' },
+  lf: { q: '', cat: '', status: '' }
+};
+let navToken = 0;
+
+function renderSidebar() {
+  $('#sidebar').innerHTML = `
+    <div class="brand"><div class="logo-mark">${icon('cap', 24)}</div><div><div class="brand-name js-college">${esc(settings.college)}</div><div class="brand-sub">Student Management System</div></div></div>
+    <nav class="nav">${NAV.map(n => `<button class="nav-item" data-action="nav" data-page="${n.id}" data-nav="${n.id}">${icon(n.icon)}<span>${n.label}</span></button>`).join('')}
+      <button class="nav-item" data-action="logout">${icon('logout')}<span>Logout</span></button></nav>
+    <div class="side-user"><div class="avatar">${initials(currentUser.name)}</div><div class="who"><b>${esc(currentUser.name)}</b><span>${esc(currentUser.role)}</span></div></div>`;
+  $('#menuBtn').innerHTML = icon('menu', 20);
+  $('#topAvatar').textContent = initials(currentUser.name);
+  $('#todayLabel').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function applyBranding() { $$('.js-college').forEach(e => e.textContent = settings.college); }
+function closeSidebar() { $('#sidebar').classList.remove('open'); $('#sideBackdrop').classList.remove('show'); }
+
+function go(page, after) {
+  ui.page = page; closeSidebar();
+  $$('.nav-item[data-nav]').forEach(b => b.classList.toggle('active', b.dataset.nav === page));
+  $('#pageTitle').textContent = PAGES[page].title;
+  const c = $('#content'); c.innerHTML = skeleton();
+  const token = ++navToken;
+  setTimeout(() => {           // short delay so the loading state is visible
+    if (token !== navToken) return;
+    renderPage(); window.scrollTo(0, 0);
+    if (after) after();
+  }, 280);
+}
+function renderPage() { const p = PAGES[ui.page]; $('#content').innerHTML = p.html(); if (p.init) p.init(); }
+const refreshPage = () => { const p = PAGES[ui.page]; if (p.update) p.update(); };
+
+/* ---------- Dashboard ---------- */
+function dayStats(d) {
+  const r = db.attendance.filter(a => a.date === d), p = r.filter(a => a.status === 'Present').length;
+  return { d, p, a: r.length - p, pct: r.length ? Math.round(p / r.length * 100) : 0 };
+}
+function dashboardHTML() {
+  const st = db.students, active = st.filter(s => s.status === 'Active').length;
+  const dates = [...new Set(db.attendance.map(a => a.date))].sort().reverse();
+  const latest = dates[0];
+  const presentLatest = latest ? db.attendance.filter(a => a.date === latest && a.status === 'Present').length : 0;
+  const presentRec = db.attendance.filter(a => a.status === 'Present').length;
+  const avg = db.attendance.length ? Math.round(presentRec / db.attendance.length * 100) : 0;
+  const lf = db.lostFound, open = lf.filter(i => i.status !== 'Claimed').length;
+  const recent = [...st].sort((a, b) => b.admissionDate.localeCompare(a.admissionDate)).slice(0, 5);
+  const trend = dates.slice(0, 7).reverse().map(dayStats);
+  const recentAtt = dates.slice(0, 5).map(dayStats);
+  const presentLabel = !latest ? 'Present students' : latest === todayISO() ? 'Present today' : 'Present on ' + fmtDate(latest);
+  return `
+  <div class="page-head"><div><h2>Welcome back, ${esc(currentUser.name.split(' ').slice(0, 2).join(' '))}</h2><p>Here is what is happening across the college today.</p></div></div>
+  <div class="grid stats">
+    <div class="stat"><div class="stat-icon blue">${icon('users', 24)}</div><div><div class="stat-label">Total Students</div><div class="stat-value">${st.length}</div><div class="stat-sub">${active} active</div></div></div>
+    <div class="stat"><div class="stat-icon green">${icon('check', 24)}</div><div><div class="stat-label">${presentLabel}</div><div class="stat-value">${presentLatest}</div><div class="stat-sub">of ${latest ? db.attendance.filter(a => a.date === latest).length : 0} marked</div></div></div>
+    <div class="stat"><div class="stat-icon sky">${icon('calendar', 24)}</div><div><div class="stat-label">Average Attendance</div><div class="stat-value">${avg}%</div><div class="stat-sub">across ${dates.length} recorded days</div></div></div>
+    <div class="stat"><div class="stat-icon amber">${icon('package', 24)}</div><div><div class="stat-label">Lost & Found Items</div><div class="stat-value">${lf.length}</div><div class="stat-sub">${open} not yet claimed</div></div></div>
+  </div>
+  <div class="grid two-col">
+    <div class="card"><div class="card-head"><h3>Attendance over the last ${trend.length} days</h3><span class="muted">Percent present</span></div>
+      <div class="card-body">${trend.length ? `<div class="bars">${trend.map(t => `<div class="bar-col"><b>${t.pct}%</b><div class="bar" style="height:${Math.max(t.pct, 2) * 1.35}px"></div><span>${parseISO(t.d).toLocaleDateString('en-IN', { weekday: 'short' })}</span></div>`).join('')}</div>` : emptyState('calendar', 'No attendance yet', 'Mark attendance to see the trend here.')}</div></div>
+    <div class="card"><div class="card-head"><h3>Quick actions</h3></div>
+      <div class="card-body quick">
+        <button class="btn ghost" data-action="quick-student">${icon('plus')} Add student</button>
+        <button class="btn ghost" data-action="quick-attendance">${icon('calendar')} Take attendance</button>
+        <button class="btn ghost" data-action="quick-marks">${icon('award')} Enter marks</button>
+        <button class="btn ghost" data-action="quick-lost">${icon('package')} Report lost item</button>
+      </div></div>
+  </div>
+  <div class="grid equal-2">
+    <div class="card"><div class="card-head"><h3>Recent student registrations</h3><button class="link" data-action="nav" data-page="students">View all</button></div>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>Course</th><th>Admitted</th></tr></thead><tbody>
+        ${recent.map(s => `<tr><td><div class="person"><div class="avatar">${initials(s.name)}</div><div><b>${esc(s.name)}</b><span>${esc(s.id)}</span></div></div></td><td>${esc(s.course)} · Sem ${s.semester}</td><td>${fmtDate(s.admissionDate)}</td></tr>`).join('') || `<tr><td colspan="3">${emptyState('users', 'No students yet', 'Add your first student to get started.')}</td></tr>`}
+      </tbody></table></div></div>
+    <div class="card"><div class="card-head"><h3>Recent attendance activity</h3><button class="link" data-action="nav" data-page="attendance">Open attendance</button></div>
+      <div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Present</th><th>Absent</th><th>Rate</th></tr></thead><tbody>
+        ${recentAtt.map(r => `<tr><td>${fmtDate(r.d)}</td><td>${r.p}</td><td>${r.a}</td><td><div class="pct-cell"><b>${r.pct}%</b><div class="progress ${pctClass(r.pct)}" style="flex:1"><span style="width:${r.pct}%"></span></div></div></td></tr>`).join('') || `<tr><td colspan="4">${emptyState('calendar', 'No records', 'Attendance activity will appear here.')}</td></tr>`}
+      </tbody></table></div></div>
+  </div>`;
+}
+
+/* =====================================================================
+   5. STUDENTS PAGE
+   ===================================================================== */
+function studentsHTML() {
+  const f = ui.students;
+  return `
+  <div class="page-head"><div><h2>Student Records</h2><p>Add, search, update and remove student profiles.</p></div>
+    <button class="btn primary" data-action="student-add">${icon('plus')} Add Student</button></div>
+  <div class="card">
+    <div class="toolbar">
+      <div class="search">${icon('search')}<input id="stuSearch" class="input" type="search" placeholder="Search by name, ID, email or phone" value="${esc(f.q)}" aria-label="Search students"></div>
+      <select id="stuCourse" class="select" aria-label="Filter by course">${optionList(COURSES, f.course, 'All courses')}</select>
+      <select id="stuSem" class="select" aria-label="Filter by semester">${optionList(SEMESTERS.map(s => ({ value: s, label: 'Semester ' + s })), f.sem, 'All semesters')}</select>
+      <select id="stuStatus" class="select" aria-label="Filter by status">${optionList(['Active', 'Inactive'], f.status, 'All statuses')}</select>
+      <select id="stuSort" class="select" aria-label="Sort students">${optionList([{ value: 'name-asc', label: 'Name A to Z' }, { value: 'name-desc', label: 'Name Z to A' }, { value: 'id-asc', label: 'Student ID' }, { value: 'sem-asc', label: 'Semester' }, { value: 'adm-desc', label: 'Newest admission' }], f.sort)}</select>
+    </div>
+    <div id="stuBody"></div>
+  </div>`;
+}
+function studentsInit() {
+  const bind = (id, key) => $('#' + id).addEventListener('input', e => { ui.students[key] = e.target.value; studentsUpdate(); });
+  bind('stuSearch', 'q'); bind('stuCourse', 'course'); bind('stuSem', 'sem'); bind('stuStatus', 'status'); bind('stuSort', 'sort');
+  studentsUpdate();
+}
+function studentsUpdate() {
+  const f = ui.students, q = f.q.toLowerCase();
+  let list = db.students.filter(s =>
+    (!q || [s.id, s.name, s.email, s.phone, s.course].some(v => String(v).toLowerCase().includes(q))) &&
+    (!f.course || s.course === f.course) && (!f.sem || String(s.semester) === f.sem) && (!f.status || s.status === f.status));
+  const sorters = {
+    'name-asc': (a, b) => a.name.localeCompare(b.name), 'name-desc': (a, b) => b.name.localeCompare(a.name),
+    'id-asc': (a, b) => a.id.localeCompare(b.id), 'sem-asc': (a, b) => a.semester - b.semester || a.name.localeCompare(b.name),
+    'adm-desc': (a, b) => b.admissionDate.localeCompare(a.admissionDate)
+  };
+  list.sort(sorters[f.sort]);
+  const body = $('#stuBody'); if (!body) return;
+  if (!list.length) {
+    body.innerHTML = emptyState('users', db.students.length ? 'No students match your search' : 'No students yet',
+      db.students.length ? 'Try a different name or clear the filters.' : 'Add the first student to start building your records.',
+      db.students.length ? '<button class="btn ghost" data-action="stu-clear">Clear filters</button>' : `<button class="btn primary" data-action="student-add">${icon('plus')} Add Student</button>`);
+    return;
+  }
+  body.innerHTML = `<div class="table-wrap"><table class="table"><thead><tr><th>Student ID</th><th>Name</th><th>Course</th><th>Semester</th><th>Contact</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead><tbody>
+    ${list.map(s => `<tr>
+      <td class="mono">${esc(s.id)}</td>
+      <td><div class="person"><div class="avatar">${initials(s.name)}</div><div><b>${esc(s.name)}</b><span>${esc(s.email)}</span></div></div></td>
+      <td>${esc(s.course)}</td><td>Sem ${s.semester} · Sec ${esc(s.section)}</td><td>${esc(s.phone)}</td>
+      <td><span class="badge ${s.status === 'Active' ? 'success' : 'neutral'}">${s.status}</span></td>
+      <td class="actions">
+        <button class="icon-btn" title="View details" aria-label="View ${esc(s.name)}" data-action="student-view" data-id="${esc(s.id)}">${icon('eye')}</button>
+        <button class="icon-btn" title="Edit" aria-label="Edit ${esc(s.name)}" data-action="student-edit" data-id="${esc(s.id)}">${icon('edit')}</button>
+        <button class="icon-btn del" title="Delete" aria-label="Delete ${esc(s.name)}" data-action="student-delete" data-id="${esc(s.id)}">${icon('trash')}</button>
+      </td></tr>`).join('')}
+  </tbody></table></div><div class="table-foot">Showing ${list.length} of ${db.students.length} students</div>`;
+}
+
+function validateStudent(d, editing) {
+  const errs = {};
+  if (!/^[A-Za-z0-9-]{4,15}$/.test(d.studentId)) errs.studentId = 'Use 4 to 15 letters, numbers or hyphens.';
+  else if (!editing && db.students.some(s => s.id.toLowerCase() === d.studentId.toLowerCase())) errs.studentId = 'This Student ID is already in use.';
+  if (!/^[A-Za-z][A-Za-z .'-]{2,59}$/.test(d.fullName)) errs.fullName = 'Enter a full name with at least 3 letters.';
+  if (!EMAIL_RE.test(d.email)) errs.email = 'Enter a valid email, for example name@college.edu.';
+  if (!PHONE_RE.test(d.phone)) errs.phone = 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9.';
+  if (!d.dob) errs.dob = 'Choose the date of birth.';
+  else { const age = (Date.now() - parseISO(d.dob)) / 31557600000; if (age < 15 || age > 60) errs.dob = 'Date of birth must give an age between 15 and 60.'; }
+  if (!d.gender) errs.gender = 'Select a gender.';
+  if (!d.course) errs.course = 'Select a course.';
+  if (!d.semester) errs.semester = 'Select a semester.';
+  if (!d.section) errs.section = 'Select a section.';
+  if (d.address.length < 5) errs.address = 'Enter the full address (at least 5 characters).';
+  if (!d.admissionDate) errs.admissionDate = 'Choose the admission date.';
+  return errs;
+}
+function openStudentForm(id) {
+  const editing = !!id;
+  const s = editing ? studentById(id) : { id: nextStudentId('BCA'), name: '', email: '', phone: '', dob: '', gender: '', course: 'BCA', semester: 1, section: 'A', address: '', admissionDate: todayISO(), status: 'Active' };
+  const body = `<form id="stuForm" class="form-grid" novalidate>
+    ${field('Student ID', 'studentId', inputHTML('studentId', 'text', s.id, editing ? 'readonly' : 'maxlength="15"'), '', editing ? 'The ID cannot be changed because other records use it.' : '')}
+    ${field('Full name', 'fullName', inputHTML('fullName', 'text', s.name, 'maxlength="60" placeholder="e.g. Aarav Sharma"'))}
+    ${field('Email', 'email', inputHTML('email', 'email', s.email, 'placeholder="name@student.college.edu"'))}
+    ${field('Phone number', 'phone', inputHTML('phone', 'tel', s.phone, 'maxlength="10" inputmode="numeric" placeholder="10-digit mobile"'))}
+    ${field('Date of birth', 'dob', inputHTML('dob', 'date', s.dob, `max="${todayISO()}"`))}
+    ${field('Gender', 'gender', selectHTML('gender', GENDERS, s.gender, 'Select gender'))}
+    ${field('Course', 'course', selectHTML('course', COURSES, s.course))}
+    ${field('Semester', 'semester', selectHTML('semester', SEMESTERS.map(n => ({ value: n, label: 'Semester ' + n })), s.semester))}
+    ${field('Section', 'section', selectHTML('section', SECTIONS.map(x => ({ value: x, label: 'Section ' + x })), s.section))}
+    ${field('Admission date', 'admissionDate', inputHTML('admissionDate', 'date', s.admissionDate))}
+    ${field('Status', 'status', selectHTML('status', ['Active', 'Inactive'], s.status))}
+    ${field('Address', 'address', `<textarea id="f_address" name="address" class="textarea" maxlength="200" placeholder="House no., area, city">${esc(s.address)}</textarea>`, 'full')}
+  </form>`;
+  openModal({ title: editing ? 'Update student' : 'Add new student', body, size: 'lg',
+    footer: `<button class="btn ghost" data-action="close-modal">Cancel</button><button class="btn primary" type="submit" form="stuForm">${editing ? 'Save changes' : 'Add student'}</button>` });
+  const form = $('#stuForm');
+  if (!editing) form.elements.course.addEventListener('change', () => { form.elements.studentId.value = nextStudentId(form.elements.course.value); });
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const d = formData(form);
+    if (showErrors(form, validateStudent(d, editing))) return;
+    const rec = { id: d.studentId, name: d.fullName, email: d.email, phone: d.phone, dob: d.dob, gender: d.gender, course: d.course, semester: +d.semester, section: d.section, address: d.address, admissionDate: d.admissionDate, status: d.status };
+    if (editing) { Object.assign(studentById(id), rec); toast('Student details updated'); }
+    else { db.students.push(rec); toast('Student added successfully'); }
+    saveDB(); closeModal(); refreshPage();
+  });
+}
+function openStudentView(id) {
+  const s = studentById(id); if (!s) return;
+  const p = attPct(s.id), sm = summarize(s.id);
+  openModal({ title: 'Student details', size: 'lg',
+    body: `<div class="profile-top"><div class="avatar">${initials(s.name)}</div><div><h3 style="font-size:20px">${esc(s.name)}</h3><div class="muted">${esc(s.id)} · ${esc(s.course)}, Semester ${s.semester}, Section ${esc(s.section)}</div><div style="margin-top:6px"><span class="badge ${s.status === 'Active' ? 'success' : 'neutral'}">${s.status}</span></div></div></div>
+    <dl class="detail-grid">
+      <div><dt>Email</dt><dd>${esc(s.email)}</dd></div><div><dt>Phone</dt><dd>${esc(s.phone)}</dd></div>
+      <div><dt>Date of birth</dt><dd>${fmtDate(s.dob)}</dd></div><div><dt>Gender</dt><dd>${esc(s.gender)}</dd></div>
+      <div><dt>Admission date</dt><dd>${fmtDate(s.admissionDate)}</dd></div>
+      <div><dt>Attendance</dt><dd>${p === null ? 'No records' : `<div class="pct-cell"><b>${p}%</b><div class="progress ${pctClass(p)}" style="flex:1"><span style="width:${p}%"></span></div></div>`}</dd></div>
+      <div class="full"><dt>Address</dt><dd>${esc(s.address)}</dd></div>
+      <div class="full"><dt>Results</dt><dd>${sm.count ? `${sm.count} subjects · ${sm.pct.toFixed(1)}% · <span class="badge ${sm.pass ? 'success' : 'danger'}">${sm.pass ? 'Pass' : 'Fail'}</span>` : 'No marks entered yet'}</dd></div>
+    </dl>`,
+    footer: `<button class="btn ghost" data-action="close-modal">Close</button><button class="btn ghost" data-action="student-edit" data-id="${esc(s.id)}">${icon('edit')} Edit</button><button class="btn primary" data-action="open-result" data-id="${esc(s.id)}">${icon('award')} View result card</button>` });
+}
+async function deleteStudent(id) {
+  const s = studentById(id); if (!s) return;
+  const ok = await confirmDialog({ title: 'Delete this student?', message: `${s.name} (${s.id}) and all their attendance and marks will be removed. This cannot be undone.`, confirmText: 'Delete student', danger: true });
+  if (!ok) return;
+  db.students = db.students.filter(x => x.id !== id);
+  db.attendance = db.attendance.filter(x => x.studentId !== id);
+  db.marks = db.marks.filter(x => x.studentId !== id);
+  saveDB(); toast('Student deleted'); refreshPage();
+}
+
+/* =====================================================================
+   6. ATTENDANCE PAGE
+   ===================================================================== */
+function attendanceHTML() {
+  const f = ui.att;
+  return `
+  <div class="page-head"><div><h2>Attendance</h2><p>Pick a class and date, mark each student, then save.</p></div></div>
+  <div class="card"><div class="filters">
+    ${field('Course', 'attCourse', `<select id="attCourse" class="select">${optionList(COURSES, f.course)}</select>`)}
+    ${field('Semester', 'attSem', `<select id="attSem" class="select">${optionList(SEMESTERS.map(n => ({ value: n, label: 'Semester ' + n })), f.sem)}</select>`)}
+    ${field('Section', 'attSection', `<select id="attSection" class="select">${optionList(SECTIONS.map(x => ({ value: x, label: 'Section ' + x })), f.section)}</select>`)}
+    ${field('Date', 'attDate', `<input id="attDate" class="input" type="date" value="${esc(f.date)}" max="${todayISO()}">`)}
+    ${field('Search student', 'attSearch', `<input id="attSearch" class="input" type="search" placeholder="Name or ID" value="${esc(f.q)}">`)}
+  </div></div>
+  <div id="attBody"></div>`;
+}
+function attendanceInit() {
+  const bind = (id, key, resetDraft) => $('#' + id).addEventListener('input', e => { ui.att[key] = e.target.value; if (resetDraft) ui.att.draft = {}; attendanceUpdate(); });
+  bind('attCourse', 'course', true); bind('attSem', 'sem', true); bind('attSection', 'section', true); bind('attDate', 'date', true); bind('attSearch', 'q', false);
+  attendanceUpdate();
+}
+const attList = () => {
+  const f = ui.att, q = f.q.toLowerCase();
+  return db.students.filter(s => s.status === 'Active' && s.course === f.course && String(s.semester) === f.sem && s.section === f.section && (!q || (s.name + ' ' + s.id).toLowerCase().includes(q))).sort((a, b) => a.name.localeCompare(b.name));
+};
+const attStatusFor = s => ui.att.draft[s.id] || (db.attendance.find(a => a.studentId === s.id && a.date === ui.att.date) || {}).status || '';
+function attendanceUpdate() {
+  const body = $('#attBody'); if (!body) return;
+  const f = ui.att, list = attList(), states = list.map(attStatusFor);
+  const P = states.filter(x => x === 'Present').length, A = states.filter(x => x === 'Absent').length, U = list.length - P - A;
+  const pct = (P + A) ? Math.round(P / (P + A) * 100) : 0;
+  const recorded = list.some(s => db.attendance.some(a => a.studentId === s.id && a.date === f.date));
+  const dirty = Object.keys(f.draft).length;
+  const marking = !list.length
+    ? emptyState('users', 'No students in this class', 'Change the course, semester or section, or clear the search box.')
+    : `<div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>Attendance</th></tr></thead><tbody>
+      ${list.map((s, i) => { const st = attStatusFor(s); return `<tr><td>${i + 1}</td><td class="mono">${esc(s.id)}</td><td><div class="person"><div class="avatar">${initials(s.name)}</div><b>${esc(s.name)}</b></div></td>
+        <td><div class="seg" role="group" aria-label="Attendance for ${esc(s.name)}">
+          <button class="${st === 'Present' ? 'on present' : ''}" data-action="att-set" data-id="${esc(s.id)}" data-status="Present">Present</button>
+          <button class="${st === 'Absent' ? 'on absent' : ''}" data-action="att-set" data-id="${esc(s.id)}" data-status="Absent">Absent</button></div></td></tr>`; }).join('')}
+    </tbody></table></div>`;
+  const wise = !list.length ? '' : `<div class="card"><div class="card-head"><h3>Student-wise attendance</h3><span class="muted">Overall record for this class</span></div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>Present</th><th>Absent</th><th>Days</th><th>Percentage</th><th>Status</th></tr></thead><tbody>
+    ${list.map(s => { const r = db.attendance.filter(a => a.studentId === s.id), pr = r.filter(a => a.status === 'Present').length, p = attPct(s.id);
+      return `<tr><td><div class="person"><div class="avatar">${initials(s.name)}</div><div><b>${esc(s.name)}</b><span>${esc(s.id)}</span></div></div></td><td>${pr}</td><td>${r.length - pr}</td><td>${r.length}</td>
+      <td><div class="pct-cell"><b>${p === null ? '—' : p + '%'}</b><div class="progress ${pctClass(p)}" style="flex:1"><span style="width:${p || 0}%"></span></div></div></td><td>${pctBadge(p)}</td></tr>`; }).join('')}
+    </tbody></table></div></div>`;
+  body.innerHTML = `
+    <div class="grid stats">
+      <div class="stat"><div class="stat-icon green">${icon('check', 24)}</div><div><div class="stat-label">Present</div><div class="stat-value">${P}</div><div class="stat-sub">${U} not marked yet</div></div></div>
+      <div class="stat"><div class="stat-icon amber">${icon('x', 24)}</div><div><div class="stat-label">Absent</div><div class="stat-value">${A}</div><div class="stat-sub">on ${fmtDate(f.date)}</div></div></div>
+      <div class="stat"><div class="stat-icon blue">${icon('calendar', 24)}</div><div style="flex:1"><div class="stat-label">Attendance percentage</div><div class="stat-value">${pct}%</div><div class="progress ${pctClass(pct)}" style="margin-top:6px"><span style="width:${pct}%"></span></div></div></div>
+    </div>
+    <div class="card"><div class="card-head"><h3>${esc(f.course)} · Semester ${f.sem} · Section ${esc(f.section)} ${recorded ? '<span class="badge info" style="margin-left:8px">Already recorded for this date</span>' : ''}</h3>
+      <div class="head-actions"><button class="btn ghost sm" data-action="att-all" data-status="Present">Mark all present</button><button class="btn ghost sm" data-action="att-all" data-status="Absent">Mark all absent</button>
+      <button class="btn primary sm" data-action="att-save">${icon('check', 16)} ${recorded ? 'Update attendance' : 'Save attendance'}${dirty ? ` (${dirty})` : ''}</button></div></div>
+      ${marking}</div>${wise}`;
+}
+function saveAttendance() {
+  const f = ui.att; let n = 0;
+  attList().forEach(s => {
+    const st = f.draft[s.id]; if (!st) return;
+    const rec = db.attendance.find(a => a.studentId === s.id && a.date === f.date);
+    if (rec) rec.status = st; else db.attendance.push({ studentId: s.id, date: f.date, status: st });
+    n++;
+  });
+  if (!n) { toast('Nothing to save yet. Mark at least one student first.', 'info'); return; }
+  saveDB(); f.draft = {}; toast(`Attendance saved for ${n} student${n > 1 ? 's' : ''}`); attendanceUpdate();
+}
+
+/* =====================================================================
+   7. MARKS & RESULTS PAGE
+   ===================================================================== */
+function marksHTML() {
+  if (!ui.marks.studentId || !studentById(ui.marks.studentId)) {
+    const first = db.students.find(s => db.marks.some(m => m.studentId === s.id)) || db.students[0];
+    ui.marks.studentId = first ? first.id : '';
+  }
+  return `
+  <div class="page-head"><div><h2>Marks & Results</h2><p>Enter marks per subject and view each student's result card.</p></div>
+    <button class="btn primary" data-action="marks-add">${icon('plus')} Add Marks</button></div>
+  <div class="card"><div class="toolbar">
+    <div class="field" style="flex:1;min-width:240px;margin:0"><label for="marksStudent">View results for</label>
+      <select id="marksStudent" class="select" style="width:100%">${optionList(db.students.map(s => ({ value: s.id, label: `${s.name} (${s.id})` })), ui.marks.studentId, db.students.length ? undefined : 'No students')}</select></div>
+  </div></div>
+  <div id="resultCard"></div>
+  <div class="card"><div class="card-head"><h3>Class results overview</h3><div class="search" style="max-width:300px">${icon('search')}<input id="marksSearch" class="input" type="search" placeholder="Search student" value="${esc(ui.marks.q)}"></div></div><div id="marksOverview"></div></div>`;
+}
+function marksInit() {
+  $('#marksStudent').addEventListener('change', e => { ui.marks.studentId = e.target.value; marksUpdate(); });
+  $('#marksSearch').addEventListener('input', e => { ui.marks.q = e.target.value; marksUpdate(); });
+  marksUpdate();
+}
+function resultCardHTML(sid, print = false) {
+  const s = studentById(sid); if (!s) return emptyState('users', 'Select a student', 'Choose a student above to see the result card.');
+  const sm = summarize(sid), grade = gradeOf(Math.round(sm.pct));
+  const rows = sm.ms.map(m => {
+    const t = m.internal + m.external, g = gradeOf(t), ok = t >= PASS_TOTAL;
+    return `<tr><td><b>${esc(m.subject)}</b></td><td>${m.internal} / ${MAX_INTERNAL}</td><td>${m.external} / ${MAX_EXTERNAL}</td><td><b>${t}</b> / 100</td><td><span class="badge ${gradeClass(g)}">${g}</span></td><td><span class="badge ${ok ? 'success' : 'danger'}">${ok ? 'Pass' : 'Fail'}</span></td>
+      ${print ? '' : `<td class="actions no-print"><button class="icon-btn" title="Update marks" aria-label="Update ${esc(m.subject)}" data-action="marks-edit" data-id="${m.id}">${icon('edit')}</button><button class="icon-btn del" title="Delete marks" aria-label="Delete ${esc(m.subject)}" data-action="marks-delete" data-id="${m.id}">${icon('trash')}</button></td>`}</tr>`;
+  }).join('');
+  return `<div class="result-card">
+    <div class="result-head"><div><h3>${esc(settings.college)}</h3><p>Semester ${s.semester} Result Card</p></div>
+      ${print ? '' : `<div class="head-actions no-print"><button class="btn ghost sm" data-action="marks-print" data-id="${esc(s.id)}">${icon('printer', 16)} Print</button></div>`}</div>
+    <div class="result-body">
+      <dl class="result-info"><div><dt>Student name</dt><dd>${esc(s.name)}</dd></div><div><dt>Student ID</dt><dd>${esc(s.id)}</dd></div><div><dt>Course</dt><dd>${esc(s.course)}</dd></div><div><dt>Semester and section</dt><dd>Sem ${s.semester} · Sec ${esc(s.section)}</dd></div></dl>
+      ${sm.count ? `<div class="table-wrap"><table class="table"><thead><tr><th>Subject</th><th>Internal</th><th>External</th><th>Total</th><th>Grade</th><th>Result</th>${print ? '' : '<th class="no-print"></th>'}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="result-sum"><div class="sum-box"><span>Total marks</span><b>${sm.total} / ${sm.max}</b></div><div class="sum-box"><span>Percentage</span><b>${sm.pct.toFixed(1)}%</b></div><div class="sum-box"><span>Overall grade</span><b>${grade}</b></div><div class="sum-box ${sm.pass ? 'pass' : 'fail'}"><span>Final result</span><b>${sm.pass ? 'PASS' : 'FAIL'}</b></div></div>`
+      : emptyState('award', 'No marks entered yet', `Add subject marks for ${s.name} to build the result card.`, print ? '' : `<button class="btn primary" data-action="marks-add">${icon('plus')} Add Marks</button>`)}
+    </div></div>`;
+}
+function marksUpdate() {
+  const rc = $('#resultCard'); if (!rc) return;
+  rc.innerHTML = db.students.length ? resultCardHTML(ui.marks.studentId) : emptyState('users', 'No students yet', 'Add a student before entering marks.');
+  const sel = $('#marksStudent'); if (sel) sel.value = ui.marks.studentId;
+  const q = ui.marks.q.toLowerCase();
+  const list = db.students.filter(s => !q || (s.name + ' ' + s.id).toLowerCase().includes(q));
+  $('#marksOverview').innerHTML = !list.length ? emptyState('search', 'No students found', 'Try a different name or ID.') :
+    `<div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>Course</th><th>Subjects</th><th>Percentage</th><th>Result</th><th></th></tr></thead><tbody>
+    ${list.map(s => { const sm = summarize(s.id); return `<tr><td><div class="person"><div class="avatar">${initials(s.name)}</div><div><b>${esc(s.name)}</b><span>${esc(s.id)}</span></div></div></td><td>${esc(s.course)} · Sem ${s.semester}</td><td>${sm.count}</td>
+      <td>${sm.count ? sm.pct.toFixed(1) + '%' : '—'}</td><td>${sm.count ? `<span class="badge ${sm.pass ? 'success' : 'danger'}">${sm.pass ? 'Pass' : 'Fail'}</span>` : '<span class="badge neutral">No marks</span>'}</td>
+      <td class="actions"><button class="btn ghost sm" data-action="marks-view" data-id="${esc(s.id)}">View result</button></td></tr>`; }).join('')}
+    </tbody></table></div>`;
+}
+function openMarksForm(markId) {
+  const editing = !!markId;
+  const m = editing ? db.marks.find(x => x.id === +markId) : { studentId: ui.marks.studentId || '', subject: '', internal: '', external: '' };
+  const studentOpts = db.students.map(s => ({ value: s.id, label: `${s.name} (${s.id})` }));
+  const body = `<form id="marksForm" class="form-grid" novalidate>
+    ${field('Student', 'studentId', selectHTML('studentId', studentOpts, m.studentId, 'Select student', editing ? 'disabled' : ''), 'full')}
+    ${field('Subject', 'subject', selectHTML('subject', SUBJECTS, m.subject, 'Select subject', editing ? 'disabled' : ''), 'full')}
+    ${field(`Internal marks (out of ${MAX_INTERNAL})`, 'internal', inputHTML('internal', 'number', m.internal, `min="0" max="${MAX_INTERNAL}" step="1" inputmode="numeric"`))}
+    ${field(`External marks (out of ${MAX_EXTERNAL})`, 'external', inputHTML('external', 'number', m.external, `min="0" max="${MAX_EXTERNAL}" step="1" inputmode="numeric"`))}
+    <div class="full sum-box" id="marksPreview"><span>Total and grade</span><b>—</b></div>
+  </form>`;
+  openModal({ title: editing ? 'Update marks' : 'Add marks', body,
+    footer: `<button class="btn ghost" data-action="close-modal">Cancel</button><button class="btn primary" type="submit" form="marksForm">${editing ? 'Save changes' : 'Save marks'}</button>` });
+  const form = $('#marksForm');
+  const preview = () => {
+    const i = form.elements.internal.value, e = form.elements.external.value, box = $('#marksPreview b');
+    if (i === '' || e === '' || isNaN(+i) || isNaN(+e)) { box.textContent = '—'; return; }
+    const t = +i + +e, g = gradeOf(t); box.textContent = `${t} / 100 · Grade ${g} · ${t >= PASS_TOTAL ? 'Pass' : 'Fail'}`;
+  };
+  form.addEventListener('input', preview); preview();
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const d = formData(form), sid = editing ? m.studentId : d.studentId, subject = editing ? m.subject : d.subject, errs = {};
+    if (!sid) errs.studentId = 'Select a student.';
+    if (!subject) errs.subject = 'Select a subject.';
+    else if (!editing && db.marks.some(x => x.studentId === sid && x.subject === subject)) errs.subject = 'Marks for this subject already exist. Use the edit button on the result card to update them.';
+    const i = d.internal, x = d.external;
+    if (i === '' || !/^\d+$/.test(i) || +i > MAX_INTERNAL) errs.internal = `Enter a whole number from 0 to ${MAX_INTERNAL}.`;
+    if (x === '' || !/^\d+$/.test(x) || +x > MAX_EXTERNAL) errs.external = `Enter a whole number from 0 to ${MAX_EXTERNAL}.`;
+    if (showErrors(form, errs)) return;
+    if (editing) { m.internal = +i; m.external = +x; toast('Marks updated'); }
+    else { db.marks.push({ id: nextNum(db.marks), studentId: sid, subject, internal: +i, external: +x }); toast('Marks added'); }
+    ui.marks.studentId = sid; saveDB(); closeModal(); refreshPage();
+  });
+}
+async function deleteMarks(id) {
+  const m = db.marks.find(x => x.id === +id); if (!m) return;
+  const ok = await confirmDialog({ title: 'Delete these marks?', message: `The marks for ${m.subject} will be removed from the result card.`, confirmText: 'Delete marks', danger: true });
+  if (!ok) return;
+  db.marks = db.marks.filter(x => x.id !== +id); saveDB(); toast('Marks deleted'); marksUpdate();
+}
+
+/* =====================================================================
+   8. LOST & FOUND, REPORTS, SETTINGS, ABOUT
+   ===================================================================== */
+const lfBadge = s => `<span class="badge ${s === 'Lost' ? 'danger' : s === 'Found' ? 'info' : 'success'}">${s}</span>`;
+function lostFoundHTML() {
+  const f = ui.lf;
+  return `
+  <div class="page-head"><div><h2>Lost & Found</h2><p>Report items, search the list and mark items as claimed.</p></div>
+    <div class="head-actions"><button class="btn ghost" data-action="lf-add" data-type="Found">${icon('plus')} Report Found Item</button><button class="btn primary" data-action="lf-add" data-type="Lost">${icon('plus')} Report Lost Item</button></div></div>
+  <div class="card"><div class="toolbar">
+    <div class="search">${icon('search')}<input id="lfSearch" class="input" type="search" placeholder="Search item, place or person" value="${esc(f.q)}" aria-label="Search items"></div>
+    <select id="lfCat" class="select" aria-label="Filter by category">${optionList(CATEGORIES, f.cat, 'All categories')}</select>
+    <select id="lfStatus" class="select" aria-label="Filter by status">${optionList(['Lost', 'Found', 'Claimed'], f.status, 'All statuses')}</select>
+  </div><div id="lfBody"></div></div>`;
+}
+function lostFoundInit() {
+  const bind = (id, key) => $('#' + id).addEventListener('input', e => { ui.lf[key] = e.target.value; lostFoundUpdate(); });
+  bind('lfSearch', 'q'); bind('lfCat', 'cat'); bind('lfStatus', 'status'); lostFoundUpdate();
+}
+function lostFoundUpdate() {
+  const body = $('#lfBody'); if (!body) return;
+  const f = ui.lf, q = f.q.toLowerCase();
+  const list = db.lostFound.filter(i => (!q || [i.name, i.description, i.location, i.reportedBy].some(v => v.toLowerCase().includes(q))) && (!f.cat || i.category === f.cat) && (!f.status || i.status === f.status)).sort((a, b) => b.date.localeCompare(a.date));
+  if (!list.length) {
+    body.innerHTML = emptyState('package', db.lostFound.length ? 'No items match your search' : 'No items reported',
+      db.lostFound.length ? 'Try another keyword or clear the filters.' : 'Report a lost or found item to start the list.',
+      db.lostFound.length ? '<button class="btn ghost" data-action="lf-clear">Clear filters</button>' : `<button class="btn primary" data-action="lf-add" data-type="Lost">${icon('plus')} Report Lost Item</button>`);
+    return;
+  }
+  body.innerHTML = `<div class="lf-grid">${list.map(i => `<article class="lf-card">
+    <div class="lf-img">${i.image ? `<img src="${esc(i.image)}" alt="${esc(i.name)}">` : icon('package', 40)}<span class="badge-slot">${lfBadge(i.status)}</span></div>
+    <div class="lf-body"><h4>${esc(i.name)}</h4><div><span class="badge neutral">${esc(i.category)}</span></div><p class="desc">${esc(i.description)}</p>
+      <div class="lf-meta"><span>Location: ${esc(i.location)}</span><span>Date: ${fmtDate(i.date)}</span><span>Reported by: ${esc(i.reportedBy)}</span><span>Contact: ${esc(i.contact)}</span></div></div>
+    <div class="lf-actions">
+      ${i.status !== 'Claimed' ? `<button class="btn success sm" data-action="lf-claim" data-id="${i.id}">${icon('check', 15)} Mark claimed</button>` : ''}
+      <button class="btn ghost sm" data-action="lf-edit" data-id="${i.id}">${icon('edit', 15)} Edit</button>
+      <button class="btn ghost sm" data-action="lf-delete" data-id="${i.id}">${icon('trash', 15)} Delete</button></div></article>`).join('')}</div>
+    <div class="table-foot">Showing ${list.length} of ${db.lostFound.length} items</div>`;
+  $$('.lf-img .badge-slot', body).forEach(s => { s.style.cssText = 'position:absolute;top:10px;left:10px'; });
+}
+function openLFForm(id, type) {
+  const editing = !!id;
+  const it = editing ? db.lostFound.find(x => x.id === +id) : { name: '', category: 'Electronics', description: '', location: '', date: todayISO(), reportedBy: '', contact: '', status: type || 'Lost', image: '' };
+  let image = it.image || '';
+  const body = `<form id="lfForm" class="form-grid" novalidate>
+    ${field('Item name', 'itemName', inputHTML('itemName', 'text', it.name, 'maxlength="80" placeholder="e.g. Black backpack"'), 'full')}
+    ${field('Category', 'category', selectHTML('category', CATEGORIES, it.category))}
+    ${field('Status', 'status', selectHTML('status', ['Lost', 'Found', 'Claimed'], it.status))}
+    ${field('Description', 'description', `<textarea id="f_description" name="description" class="textarea" maxlength="300" placeholder="Colour, brand, marks or anything that helps identify it">${esc(it.description)}</textarea>`, 'full')}
+    ${field('Location', 'location', inputHTML('location', 'text', it.location, 'maxlength="80" placeholder="Where was it lost or found?"'))}
+    ${field('Date', 'date', inputHTML('date', 'date', it.date, `max="${todayISO()}"`))}
+    ${field('Reported by', 'reportedBy', inputHTML('reportedBy', 'text', it.reportedBy, 'maxlength="60"'))}
+    ${field('Contact information', 'contact', inputHTML('contact', 'text', it.contact, 'maxlength="60" placeholder="Mobile number or email"'))}
+    ${field('Image (optional)', 'image', `<input id="f_image" name="image" type="file" accept="image/*" class="input"><div class="img-preview" id="imgPreview"></div>`, 'full', 'JPG or PNG, up to 400 KB.')}
+  </form>`;
+  openModal({ title: editing ? 'Update item' : `Report ${it.status.toLowerCase()} item`, body, size: 'lg',
+    footer: `<button class="btn ghost" data-action="close-modal">Cancel</button><button class="btn primary" type="submit" form="lfForm">${editing ? 'Save changes' : 'Submit report'}</button>` });
+  const form = $('#lfForm');
+  const drawPreview = () => { $('#imgPreview').innerHTML = image ? `<img src="${esc(image)}" alt="Preview"><button type="button" class="btn ghost sm" id="rmImg">Remove image</button>` : ''; const rm = $('#rmImg'); if (rm) rm.onclick = () => { image = ''; form.elements.image.value = ''; drawPreview(); }; };
+  drawPreview();
+  form.elements.image.addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    if (!file.type.startsWith('image/')) { showErrors(form, { image: 'Choose an image file (JPG or PNG).' }); e.target.value = ''; return; }
+    if (file.size > 400 * 1024) { showErrors(form, { image: 'This image is larger than 400 KB. Choose a smaller one.' }); e.target.value = ''; return; }
+    showErrors(form, {});
+    const r = new FileReader(); r.onload = () => { image = r.result; drawPreview(); }; r.readAsDataURL(file);
+  });
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const d = formData(form), errs = {};
+    if (d.itemName.length < 2) errs.itemName = 'Enter the item name.';
+    if (d.description.length < 5) errs.description = 'Add a short description (at least 5 characters).';
+    if (d.location.length < 2) errs.location = 'Enter the location.';
+    if (!d.date) errs.date = 'Choose the date.'; else if (d.date > todayISO()) errs.date = 'The date cannot be in the future.';
+    if (d.reportedBy.length < 2) errs.reportedBy = 'Enter who is reporting this item.';
+    if (!(EMAIL_RE.test(d.contact) || PHONE_RE.test(d.contact))) errs.contact = 'Enter a 10-digit mobile number or a valid email.';
+    if (showErrors(form, errs)) return;
+    const rec = { name: d.itemName, category: d.category, description: d.description, location: d.location, date: d.date, reportedBy: d.reportedBy, contact: d.contact, status: d.status, image };
+    if (editing) { Object.assign(it, rec); toast('Item updated'); } else { db.lostFound.push({ id: nextNum(db.lostFound), ...rec }); toast(`${rec.status} item reported`); }
+    saveDB(); closeModal(); refreshPage();
+  });
+}
+
+/* ---------- Reports ---------- */
+function buildReport(type) {
+  if (type === 'students') {
+    const st = db.students;
+    return { title: 'Student Statistics Report', filename: 'student-report.csv',
+      summary: [['Total students', st.length], ['Active', st.filter(s => s.status === 'Active').length], ['Inactive', st.filter(s => s.status !== 'Active').length], ...COURSES.map(c => [c + ' students', st.filter(s => s.course === c).length])],
+      columns: ['Student ID', 'Name', 'Course', 'Semester', 'Section', 'Phone', 'Status'],
+      rows: st.map(s => [s.id, s.name, s.course, s.semester, s.section, s.phone, s.status]) };
+  }
+  if (type === 'attendance') {
+    const rows = db.students.map(s => { const r = db.attendance.filter(a => a.studentId === s.id), p = r.filter(a => a.status === 'Present').length; return [s.id, s.name, s.course + ' Sem ' + s.semester, p, r.length - p, r.length, r.length ? Math.round(p / r.length * 100) + '%' : '—']; });
+    const total = db.attendance.length, pr = db.attendance.filter(a => a.status === 'Present').length;
+    return { title: 'Attendance Report', filename: 'attendance-report.csv',
+      summary: [['Overall attendance', (total ? Math.round(pr / total * 100) : 0) + '%'], ['Days recorded', new Set(db.attendance.map(a => a.date)).size], ['Below 75%', db.students.filter(s => { const p = attPct(s.id); return p !== null && p < 75; }).length]],
+      columns: ['Student ID', 'Name', 'Class', 'Present', 'Absent', 'Total days', 'Percentage'], rows };
+  }
+  if (type === 'marks') {
+    const withMarks = db.students.filter(s => summarize(s.id).count);
+    const rows = db.students.map(s => { const sm = summarize(s.id); return [s.id, s.name, s.course + ' Sem ' + s.semester, sm.count, sm.count ? `${sm.total} / ${sm.max}` : '—', sm.count ? sm.pct.toFixed(1) + '%' : '—', sm.count ? (sm.pass ? 'Pass' : 'Fail') : 'No marks']; });
+    const avg = withMarks.length ? withMarks.reduce((a, s) => a + summarize(s.id).pct, 0) / withMarks.length : 0;
+    return { title: 'Marks and Results Report', filename: 'marks-report.csv',
+      summary: [['Students with marks', withMarks.length], ['Passed', withMarks.filter(s => summarize(s.id).pass).length], ['Failed', withMarks.filter(s => !summarize(s.id).pass).length], ['Average percentage', avg.toFixed(1) + '%']],
+      columns: ['Student ID', 'Name', 'Class', 'Subjects', 'Total', 'Percentage', 'Result'], rows };
+  }
+  const lf = db.lostFound;
+  return { title: 'Lost and Found Report', filename: 'lost-found-report.csv',
+    summary: [['Total items', lf.length], ['Lost', lf.filter(i => i.status === 'Lost').length], ['Found', lf.filter(i => i.status === 'Found').length], ['Claimed', lf.filter(i => i.status === 'Claimed').length]],
+    columns: ['Item', 'Category', 'Location', 'Date', 'Reported by', 'Status'],
+    rows: lf.map(i => [i.name, i.category, i.location, fmtDate(i.date), i.reportedBy, i.status]) };
+}
+function reportHTML(r) {
+  return `<div class="report"><div class="report-head"><h2>${esc(settings.college)}</h2><h3>${esc(r.title)}</h3><p>Generated on ${fmtDate(todayISO())}</p></div>
+    <div class="chips">${r.summary.map(([l, v]) => `<div class="chip"><b>${esc(v)}</b>${esc(l)}</div>`).join('')}</div>
+    ${r.rows.length ? `<div class="table-wrap"><table class="table"><thead><tr>${r.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${r.rows.map(row => `<tr>${row.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : emptyState('file', 'No data for this report', 'Add some records first.')}</div>`;
+}
+function reportsHTML() {
+  const cards = [
+    ['students', 'Student statistics', 'Course-wise strength, active and inactive students.', 'users'],
+    ['attendance', 'Attendance report', 'Present, absent and percentage for every student.', 'calendar'],
+    ['marks', 'Marks and results report', 'Totals, percentages and pass or fail for each student.', 'award'],
+    ['lostfound', 'Lost & found report', 'All reported items with their current status.', 'package']
+  ];
+  return `<div class="page-head"><div><h2>Reports</h2><p>View, print or download a report for each module.</p></div></div>
+  <div class="report-cards">${cards.map(([type, title, text, ic]) => { const r = buildReport(type); return `<div class="report-card">
+    <div class="stat-icon blue">${icon(ic, 24)}</div><div><h3>${title}</h3><p class="muted">${text}</p></div>
+    <div class="nums">${r.summary.slice(0, 3).map(([l, v]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>
+    <div class="report-actions"><button class="btn primary sm" data-action="report-view" data-type="${type}">${icon('eye', 15)} View</button>
+    <button class="btn ghost sm" data-action="report-print" data-type="${type}">${icon('printer', 15)} Print</button>
+    <button class="btn ghost sm" data-action="report-download" data-type="${type}">${icon('download', 15)} Download</button></div></div>`; }).join('')}</div>`;
+}
+
+/* ---------- Settings ---------- */
+function settingsHTML() {
+  const theme = (() => { try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) { return 'auto'; } })();
+  return `<div class="page-head"><div><h2>Settings</h2><p>Personalise the portal and manage the demo data.</p></div></div>
+  <div class="card">
+    <div class="setting-row"><div class="txt"><b>College name</b><span>Shown in the sidebar, login page and reports.</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="setCollege" class="input" maxlength="80" value="${esc(settings.college)}" aria-label="College name"><button class="btn primary" data-action="save-college">Save name</button></div></div>
+    <div class="setting-row"><div class="txt"><b>Appearance</b><span>Follow your device or force a light or dark look.</span></div>
+      <select id="setTheme" class="select" aria-label="Theme">${optionList([{ value: 'auto', label: 'Match my device' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }], theme)}</select></div>
+    <div class="setting-row"><div class="txt"><b>Signed in as</b><span>${esc(currentUser.name)} · ${esc(currentUser.email)}</span></div><span class="badge info">${esc(currentUser.role)}</span></div>
+  </div>
+  <div class="card"><div class="card-head"><h3>Demo data</h3></div>
+    <div class="setting-row"><div class="txt"><b>Reset to sample data</b><span>Restores the 16 sample students and all their records.</span></div><button class="btn ghost" data-action="reset-data">Reset sample data</button></div>
+    <div class="setting-row"><div class="txt"><b>Clear all records</b><span>Empties every table so you can enter your own data.</span></div><button class="btn danger" data-action="clear-data">Clear all data</button></div></div>
+  <div class="card"><div class="card-head"><h3>Backend connection</h3></div><div class="card-body prose"><p class="muted">Data is stored in this browser for now. To connect the Python and MySQL backend, replace the functions in the DATA LAYER section of the script (loadDB, saveDB and the add, update and delete code) with fetch() calls to your Flask API. The included schema.sql and app.py show the tables and endpoints to use.</p></div></div>`;
+}
+function settingsInit() {
+  $('#setTheme').addEventListener('change', e => { try { localStorage.setItem(THEME_KEY, e.target.value); } catch (x) {} applyTheme(); toast('Appearance updated'); });
+}
+function applyTheme() {
+  let t = 'auto'; try { t = localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) {}
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+}
+
+/* ---------- About Project ---------- */
+function aboutHTML() {
+  const li = arr => `<ul>${arr.map(x => `<li>${x}</li>`).join('')}</ul>`;
+  return `
+  <div class="about-hero"><h2>About the project</h2><p>The Student Management System brings student records, attendance, marks and lost-and-found reports into one portal, so college staff spend less time searching registers and fixing errors.</p></div>
+  <div class="grid equal-2">
+    <div class="card"><div class="card-head"><h3>The problem</h3></div><div class="card-body prose">${li(['Managing student information by hand takes too much time.', 'Finding one record in files and registers is slow.', 'Repeated manual updates cause mistakes.', 'Paperwork needs storage space and can be lost.', 'Attendance is hard to maintain and total up.', 'Marks and results are hard to organise.', 'Lost-and-found details are not tracked anywhere.'])}</div></div>
+    <div class="card"><div class="card-head"><h3>The solution</h3></div><div class="card-body prose"><p>A centralised digital system where every record lives in one place and can be searched, updated and reported in seconds.</p>${li(['One login, one dashboard for all modules.', 'Forms with validation to prevent wrong data.', 'Instant search, filters and sorting.', 'Automatic attendance percentage, grades and results.', 'Printable and downloadable reports.'])}</div></div>
+  </div>
+  <div class="card"><div class="card-head"><h3>Core modules</h3></div><div class="card-body"><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">
+    <div><h4>1. Student records</h4><p class="muted">Add, view, update, delete and search students with ID, contact, course, semester and section.</p></div>
+    <div><h4>2. Attendance</h4><p class="muted">Mark present or absent by class and date, with percentages and shortage warnings.</p></div>
+    <div><h4>3. Marks and results</h4><p class="muted">Internal and external marks, total, grade, pass or fail and a printable result card.</p></div>
+    <div><h4>4. Lost and found</h4><p class="muted">Report, search and claim items, with category, location and photo.</p></div></div></div></div>
+  <div class="grid equal-2">
+    <div class="card"><div class="card-head"><h3>Benefits</h3></div><div class="card-body prose">${li(['Saves time for teachers and office staff.', 'Fewer errors and less duplicate data.', 'Less paper and easier storage.', 'Clear view of attendance and performance.', 'Helps students recover lost belongings.'])}</div></div>
+    <div class="card"><div class="card-head"><h3>Technologies used</h3></div><div class="card-body prose"><div class="tag-row"><span class="tech-tag">HTML5</span><span class="tech-tag">CSS3</span><span class="tech-tag">JavaScript</span><span class="tech-tag">Python (Flask)</span><span class="tech-tag">MySQL</span></div>
+      <p class="muted" style="margin-top:12px">HTML and CSS build the pages, JavaScript makes them interactive, Python runs the server, and MySQL stores the data permanently.</p></div></div>
+  </div>
+  <div class="card"><div class="card-head"><h3>Database design</h3></div><div class="table-wrap"><table class="table"><thead><tr><th>Table</th><th>Main columns</th><th>Relationship</th></tr></thead><tbody>
+    <tr><td><b>users</b></td><td>user_id (PK), full_name, email, password_hash, role</td><td>Staff who log in and mark attendance</td></tr>
+    <tr><td><b>students</b></td><td>student_id (PK), full_name, email, phone, dob, gender, course, semester, section, address, admission_date, status</td><td>Parent table for attendance and marks</td></tr>
+    <tr><td><b>attendance</b></td><td>attendance_id (PK), student_id (FK), attendance_date, status, marked_by (FK)</td><td>Many attendance rows per student; one row per student per date</td></tr>
+    <tr><td><b>marks</b></td><td>mark_id (PK), student_id (FK), subject, internal_marks, external_marks</td><td>Many marks rows per student; one row per subject</td></tr>
+    <tr><td><b>lost_found</b></td><td>item_id (PK), item_name, category, description, location, item_date, reported_by, contact, status, image_path</td><td>Independent table; reporter can link to a student ID later</td></tr>
+  </tbody></table></div></div>`;
+}
+
+const PAGES = {
+  dashboard:  { title: 'Dashboard', html: dashboardHTML, update: () => renderPage() },
+  students:   { title: 'Students', html: studentsHTML, init: studentsInit, update: studentsUpdate },
+  attendance: { title: 'Attendance', html: attendanceHTML, init: attendanceInit, update: attendanceUpdate },
+  marks:      { title: 'Marks & Results', html: marksHTML, init: marksInit, update: marksUpdate },
+  lostfound:  { title: 'Lost & Found', html: lostFoundHTML, init: lostFoundInit, update: lostFoundUpdate },
+  reports:    { title: 'Reports', html: reportsHTML, update: () => renderPage() },
+  settings:   { title: 'Settings', html: settingsHTML, init: settingsInit, update: () => renderPage() },
+  about:      { title: 'About Project', html: aboutHTML }
+};
+
+/* =====================================================================
+   9. CLICK HANDLERS + START-UP
+   Every button has data-action="name". The ACTIONS object below says what each name does.
+   ===================================================================== */
+const ACTIONS = {
+  'nav': d => go(d.page),
+  'toggle-sidebar': () => { $('#sidebar').classList.toggle('open'); $('#sideBackdrop').classList.toggle('show'); },
+  'close-sidebar': closeSidebar,
+  'close-modal': closeModal,
+  'logout': async () => {
+    if (!(await confirmDialog({ title: 'Log out?', message: 'You will need to sign in again to continue.', confirmText: 'Log out' }))) return;
+    closeModal(); currentUser = null; $('#app').hidden = true; $('#loginScreen').hidden = false; $('#loginPassword').value = '';
+    toast('You have been logged out', 'info');
+  },
+  // login screen
+  'toggle-pass': (d, btn) => { const i = $('#loginPassword'); i.type = i.type === 'password' ? 'text' : 'password'; btn.setAttribute('aria-pressed', i.type === 'text'); },
+  'demo-login': () => { $('#loginEmail').value = DEMO_USER.email; $('#loginPassword').value = DEMO_USER.password; setLoginErrors({}); },
+  'forgot': () => {
+    openModal({ title: 'Reset your password', size: 'sm',
+      body: `<form id="forgotForm" novalidate>${field('Registered email', 'resetEmail', inputHTML('resetEmail', 'email', $('#loginEmail').value, 'placeholder="you@college.edu"'))}<p class="muted" style="font-size:13.5px">Demo only: no email is sent, but a real backend would send a reset link here.</p></form>`,
+      footer: `<button class="btn ghost" data-action="close-modal">Cancel</button><button class="btn primary" type="submit" form="forgotForm">Send reset link</button>` });
+    $('#forgotForm').addEventListener('submit', e => { e.preventDefault(); const f = e.target; const v = f.elements.resetEmail.value.trim();
+      if (showErrors(f, EMAIL_RE.test(v) ? {} : { resetEmail: 'Enter a valid email address.' })) return;
+      closeModal(); toast(`Reset link sent to ${v} (demo)`, 'info'); });
+  },
+  // students
+  'student-add': () => openStudentForm(),
+  'student-edit': d => openStudentForm(d.id),
+  'student-view': d => openStudentView(d.id),
+  'student-delete': d => deleteStudent(d.id),
+  'stu-clear': () => { ui.students = { q: '', course: '', sem: '', status: '', sort: 'name-asc' }; renderPage(); },
+  'open-result': d => { closeModal(); ui.marks.studentId = d.id; go('marks'); },
+  // attendance
+  'att-set': d => { ui.att.draft[d.id] = d.status; attendanceUpdate(); },
+  'att-all': d => { attList().forEach(s => ui.att.draft[s.id] = d.status); attendanceUpdate(); },
+  'att-save': saveAttendance,
+  // marks
+  'marks-add': () => openMarksForm(),
+  'marks-edit': d => openMarksForm(d.id),
+  'marks-delete': d => deleteMarks(d.id),
+  'marks-view': d => { ui.marks.studentId = d.id; marksUpdate(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+  'marks-print': d => printHTML(resultCardHTML(d.id, true)),
+  // lost & found
+  'lf-add': d => openLFForm(null, d.type),
+  'lf-edit': d => openLFForm(d.id),
+  'lf-clear': () => { ui.lf = { q: '', cat: '', status: '' }; renderPage(); },
+  'lf-claim': async d => {
+    const it = db.lostFound.find(x => x.id === +d.id); if (!it) return;
+    if (!(await confirmDialog({ title: 'Mark as claimed?', message: `"${it.name}" will be marked as claimed by its owner.`, confirmText: 'Mark claimed' }))) return;
+    it.status = 'Claimed'; saveDB(); toast('Item marked as claimed'); lostFoundUpdate();
+  },
+  'lf-delete': async d => {
+    const it = db.lostFound.find(x => x.id === +d.id); if (!it) return;
+    if (!(await confirmDialog({ title: 'Delete this item?', message: `"${it.name}" will be removed from the list.`, confirmText: 'Delete item', danger: true }))) return;
+    db.lostFound = db.lostFound.filter(x => x.id !== +d.id); saveDB(); toast('Item deleted'); lostFoundUpdate();
+  },
+  // reports
+  'report-view': d => { const r = buildReport(d.type); openModal({ title: r.title, size: 'lg', body: reportHTML(r), footer: `<button class="btn ghost" data-action="report-print" data-type="${d.type}">${icon('printer', 15)} Print</button><button class="btn primary" data-action="report-download" data-type="${d.type}">${icon('download', 15)} Download CSV</button>` }); },
+  'report-print': d => printHTML(reportHTML(buildReport(d.type))),
+  'report-download': d => { const r = buildReport(d.type); downloadCSV(r.filename, r); },
+  // settings
+  'save-college': () => {
+    const v = $('#setCollege').value.trim();
+    if (v.length < 3) { toast('Enter a college name with at least 3 characters', 'error'); return; }
+    settings.college = v; saveSettings(); applyBranding(); toast('College name saved');
+  },
+  'reset-data': async () => {
+    if (!(await confirmDialog({ title: 'Reset to sample data?', message: 'All changes you made will be replaced by the original sample records.', confirmText: 'Reset data', danger: true }))) return;
+    db = buildSampleData(); saveDB(); ui.marks.studentId = ''; toast('Sample data restored');
+  },
+  'clear-data': async () => {
+    if (!(await confirmDialog({ title: 'Clear all records?', message: 'Every student, attendance, marks and lost-and-found record will be deleted.', confirmText: 'Clear everything', danger: true }))) return;
+    db = { students: [], attendance: [], marks: [], lostFound: [] }; saveDB(); ui.marks.studentId = ''; toast('All records cleared');
+  },
+  // dashboard quick actions
+  'quick-student': () => go('students', () => openStudentForm()),
+  'quick-attendance': () => go('attendance'),
+  'quick-marks': () => go('marks', () => openMarksForm()),
+  'quick-lost': () => go('lostfound', () => openLFForm(null, 'Lost'))
+};
+document.addEventListener('click', e => {
+  const bd = e.target.closest('.modal-backdrop');
+  if (bd && e.target === bd) { if ($('#confirmRoot').contains(bd)) { const no = $('#cfNo'); if (no) no.click(); } else closeModal(); return; }
+  const t = e.target.closest('[data-action]'); if (!t) return;
+  const fn = ACTIONS[t.dataset.action]; if (fn) fn(t.dataset, t, e);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const no = $('#cfNo'); if (no) { no.click(); return; }
+  if ($('#modalRoot').innerHTML) closeModal();
+});
+
+/* ---------- Login ---------- */
+function setLoginErrors(errs) {
+  $('#errEmail').textContent = errs.email || ''; $('#errPassword').textContent = errs.password || '';
+  $('#loginEmail').classList.toggle('invalid', !!errs.email); $('#loginPassword').classList.toggle('invalid', !!errs.password);
+}
+$('#loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const email = $('#loginEmail').value.trim(), pw = $('#loginPassword').value, errs = {};
+  if (!EMAIL_RE.test(email)) errs.email = 'Enter a valid email address.';
+  if (pw.length < 6) errs.password = 'Password must be at least 6 characters.';
+  setLoginErrors(errs); $('#loginError').hidden = true;
+  if (Object.keys(errs).length) return;
+  const btn = $('#loginBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Signing in';
+  setTimeout(() => {
+    btn.disabled = false; btn.textContent = 'Login';
+    if (email.toLowerCase() === DEMO_USER.email && pw === DEMO_USER.password) {
+      try { if ($('#rememberMe').checked) localStorage.setItem(REMEMBER_KEY, email); else localStorage.removeItem(REMEMBER_KEY); } catch (x) {}
+      startApp();
+    } else $('#loginError').hidden = false;
+  }, 800);
+});
+function startApp() {
+  currentUser = { ...DEMO_USER };
+  $('#loginScreen').hidden = true; $('#app').hidden = false;
+  renderSidebar(); applyBranding(); go('dashboard');
+  toast('Welcome back, ' + currentUser.name.split(' ')[0] + ' ' + currentUser.name.split(' ')[1]);
+}
+(function boot() {
+  applyTheme(); applyBranding();
+  $('.pw-wrap .toggle').innerHTML = icon('eye');
+  try { const r = localStorage.getItem(REMEMBER_KEY); if (r) { $('#loginEmail').value = r; $('#rememberMe').checked = true; } } catch (e) {}
+})();
+</script>
+</body>
+</html>
